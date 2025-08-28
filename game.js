@@ -21,7 +21,7 @@ class Game {
              8: "Maybe Normal",
              9: "Score!",
              10: "100%",
-             11: "Conservative Merge"
+                           11: "Power up"
          };
         
         // Timer properties
@@ -62,12 +62,23 @@ class Game {
         this.keys = {};
         this.mouse = { x: 0, y: 0 };
         
-        // Speedrun mode properties
-        this.speedrunMode = false;
-        this.levelStartTime = 0;
-        this.totalSpeedrunTime = 0;
-        this.levelTimes = [];
-        this.speedrunStartLevel = 1;
+                 // Speedrun mode properties
+         this.speedrunMode = false;
+         this.levelStartTime = 0;
+         this.totalSpeedrunTime = 0;
+         this.levelTimes = [];
+         this.speedrunStartLevel = 1;
+         
+         // Power-up properties for level 11
+         this.powerUps = [];
+         this.powerUpSpawnTime = 0;
+         this.powerUpSpawnInterval = 3000; // 3 seconds
+         this.playerPowerUps = {
+             speedBoost: 0,
+             invincibility: 0
+         };
+         this.enemySlowEffect = 0;
+         this.eatenMovingApples = 0; // Counter for Level 11 winning condition
         
         this.init();
     }
@@ -290,14 +301,25 @@ class Game {
         // Reset multiple AI players for level 7
         this.aiPlayers = [];
         
-        this.safeZones = [];
-        this.enemies = [];
-        this.apples = [];
-        this.lineSegments = [];
+                 this.safeZones = [];
+         this.enemies = [];
+         this.apples = [];
+         this.lineSegments = [];
+         this.powerUps = [];
         
-        // Reset timer (starts from 0)
-        this.levelTime = 0;
-        this.startTime = Date.now();
+                 // Reset timer (starts from 0)
+         this.levelTime = 0;
+         this.startTime = Date.now();
+         
+         // Reset power-up properties
+         this.playerPowerUps = {
+             speedBoost: 0,
+             invincibility: 0
+         };
+         this.enemySlowEffect = 0;
+         this.powerUpSpawnTime = Date.now();
+         this.eatenMovingApples = 0; // Reset counter for Level 11
+         console.log('Level 11 counter reset to 0');
         
         // Create initial safe zone
         this.safeZones.push({
@@ -328,8 +350,8 @@ class Game {
              // Level 10: Create regular enemies like level 8
              let enemyCount = 4; // Start with 4 enemies
          } else if (this.currentLevel === 11) {
-             // Level 11: Create regular enemies like level 8
-             let enemyCount = 4; // Start with 4 enemies
+             // Level 11: Create enemies that become moving apples when enclosed
+             let enemyCount = 3; // Start with 3 enemies (need to eat 3 to win)
              
              for (let i = 0; i < enemyCount; i++) {
                  let enemyX, enemyY;
@@ -347,31 +369,13 @@ class Game {
                      y: enemyY,
                      radius: 6,
                      speed: 0.8 + Math.random() * 0.8,
-                     wanderAngle: Math.random() * Math.PI * 2
+                     wanderAngle: Math.random() * Math.PI * 2,
+     
                  });
              }
              
-             for (let i = 0; i < aiEnemyCount; i++) {
-                 let aiEnemyX, aiEnemyY;
-                 let attempts = 0;
-                 
-                 // Keep trying until we find a position outside the safe zone
-                 do {
-                     aiEnemyX = Math.random() * (this.canvas.width - 100) + 50;
-                     aiEnemyY = Math.random() * (this.canvas.height - 100) + 50;
-                     attempts++;
-                 } while (this.isPositionInSafeZone(aiEnemyX, aiEnemyY) && attempts < 50);
-                 
-                 this.enemies.push({
-                     x: aiEnemyX,
-                     y: aiEnemyY,
-                     radius: 8,
-                     speed: 2.5, // Same speed as AI players
-                     wanderAngle: Math.random() * Math.PI * 2,
-                     isAI: true, // Mark as AI enemy
-                     fleeRange: 100 // Range at which they start fleeing
-                 });
-             }
+             // Spawn initial power-up
+             this.spawnPowerUp();
          } else {
             // Create enemies based on level for other levels
             let enemyCount = Math.min(3 + Math.floor(this.currentLevel / 2), 8);
@@ -487,11 +491,14 @@ class Game {
             this.safeZones.push(newSafeZone);
         }
                 
-                        // Check for enemies trapped inside the polygon
+                                         // Check for enemies trapped inside the polygon
+        console.log(`Level 11: Checking ${this.enemies.length} enemies against polygon`);
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
+            console.log(`Level 11: Enemy ${i} at (${enemy.x}, ${enemy.y})`);
             if (this.isPointInPolygon(enemy.x, enemy.y, polygon)) {
-                // Convert enemy to apple
+                console.log(`Level 11: Enemy ${i} is inside polygon!`);
+                // Convert enemy to apple for all levels
                 const points = this.currentLevel === 9 ? 100 : 50; // Level 9 gives more points
                 this.apples.push({
                     x: enemy.x,
@@ -500,6 +507,13 @@ class Game {
                     points: points
                 });
                 this.enemies.splice(i, 1);
+                
+                // Level 11: Check if all enemies are gone
+                if (this.currentLevel === 11 && this.enemies.length === 0) {
+                    console.log('Level 11: All enemies removed! Completing level...');
+                    this.completeLevel();
+                    return;
+                }
                 
                 // For level 5, mark the zone as permanent if an enemy was killed
                 if (this.currentLevel === 5) {
@@ -683,10 +697,15 @@ class Game {
                     Math.pow(this.player.y - enemy.y, 2)
                 );
                 
-                if (distance < this.player.radius + enemy.radius) {
-                    this.gameOver();
-                    return;
-                }
+                                 if (distance < this.player.radius + enemy.radius) {
+                     // Level 11: Check if player is invincible
+                     if (this.currentLevel === 11 && this.playerPowerUps.invincibility > 0) {
+                         // Player is invincible, ignore collision
+                     } else {
+                         this.gameOver();
+                         return;
+                     }
+                 }
             }
         }
         
@@ -704,34 +723,70 @@ class Game {
                     );
                     
                     if (distance < enemy.radius) {
-                        this.gameOver();
-                        return;
+                        // Level 11: Check if player is invincible
+                        if (this.currentLevel === 11 && this.playerPowerUps.invincibility > 0) {
+                            // Player is invincible, ignore collision
+                        } else {
+                            this.gameOver();
+                            return;
+                        }
                     }
                 }
             }
         }
         
-        // Check apple collection
-        for (let i = this.apples.length - 1; i >= 0; i--) {
-            const apple = this.apples[i];
-            const distance = Math.sqrt(
-                Math.pow(this.player.x - apple.x, 2) + 
-                Math.pow(this.player.y - apple.y, 2)
-            );
-            
-            if (distance < this.player.radius + apple.radius) {
-                this.score += apple.points;
-                this.apples.splice(i, 1);
-                this.respawnEnemy(); // Respawn enemy for level 4
-                this.updateDisplay();
-                
-                // Level 9: Check if score target is reached
-                if (this.currentLevel === 9 && this.score >= 5000) {
-                    this.completeLevel();
-                    return;
-                }
-            }
-        }
+                 // Check apple collection
+         for (let i = this.apples.length - 1; i >= 0; i--) {
+             const apple = this.apples[i];
+             const distance = Math.sqrt(
+                 Math.pow(this.player.x - apple.x, 2) + 
+                 Math.pow(this.player.y - apple.y, 2)
+             );
+             
+             if (distance < this.player.radius + apple.radius) {
+                 this.score += apple.points;
+                 this.apples.splice(i, 1);
+                 this.respawnEnemy(); // Respawn enemy for level 4
+                 this.updateDisplay();
+                 
+                 // Level 9: Check if score target is reached
+                 if (this.currentLevel === 9 && this.score >= 5000) {
+                     this.completeLevel();
+                     return;
+                 }
+             }
+         }
+         
+
+         
+         // Check power-up collection (Level 11)
+         if (this.currentLevel === 11) {
+             for (let i = this.powerUps.length - 1; i >= 0; i--) {
+                 const powerUp = this.powerUps[i];
+                 const distance = Math.sqrt(
+                     Math.pow(this.player.x - powerUp.x, 2) + 
+                     Math.pow(this.player.y - powerUp.y, 2)
+                 );
+                 
+                 if (distance < this.player.radius + powerUp.radius) {
+                     // Apply power-up effect
+                     switch (powerUp.type) {
+                         case 'rabbit':
+                             this.playerPowerUps.speedBoost = 5000; // 5 seconds
+                             break;
+                         case 'turtle':
+                             this.enemySlowEffect = 5000; // 5 seconds
+                             break;
+                         case 'star':
+                             this.playerPowerUps.invincibility = 5000; // 5 seconds
+                             break;
+                     }
+                     
+                     this.powerUps.splice(i, 1);
+                     this.updateDisplay();
+                 }
+             }
+         }
     }
     
     pointToLineDistance(px, py, x1, y1, x2, y2) {
@@ -1073,14 +1128,20 @@ class Game {
         return Math.abs(area) / 2;
     }
     
-    updatePlayer() {
-        let dx = 0;
-        let dy = 0;
-        
-        if (this.keys['w'] || this.keys['ArrowUp']) dy -= this.player.speed;
-        if (this.keys['s'] || this.keys['ArrowDown']) dy += this.player.speed;
-        if (this.keys['a'] || this.keys['ArrowLeft']) dx -= this.player.speed;
-        if (this.keys['d'] || this.keys['ArrowRight']) dx += this.player.speed;
+         updatePlayer() {
+         let dx = 0;
+         let dy = 0;
+         
+         // Calculate current speed (with power-up boost for Level 11)
+         let currentSpeed = this.player.speed;
+         if (this.currentLevel === 11 && this.playerPowerUps.speedBoost > 0) {
+             currentSpeed *= 1.5; // 50% speed boost
+         }
+         
+         if (this.keys['w'] || this.keys['ArrowUp']) dy -= currentSpeed;
+         if (this.keys['s'] || this.keys['ArrowDown']) dy += currentSpeed;
+         if (this.keys['a'] || this.keys['ArrowLeft']) dx -= currentSpeed;
+         if (this.keys['d'] || this.keys['ArrowRight']) dx += currentSpeed;
         
         // Normalize diagonal movement
         if (dx !== 0 && dy !== 0) {
@@ -1127,8 +1188,13 @@ class Game {
                 
                 // Only check if player center is very close to the line (within 2 pixels)
                 if (distance < 2) {
-                    this.gameOver();
-                    return;
+                    // Level 11: Check if player is invincible
+                    if (this.currentLevel === 11 && this.playerPowerUps.invincibility > 0) {
+                        // Player is invincible, ignore collision
+                    } else {
+                        this.gameOver();
+                        return;
+                    }
                 }
             }
         }
@@ -1407,42 +1473,25 @@ class Game {
                  }
              }
              
-             if (existingPolygonZone) {
-                 if (this.currentLevel === 11) {
-                     // Level 11: Conservative merging - don't expand beyond original + new areas
-                     const conservativeMergedPolygon = this.createConservativeMergedPolygon(existingPolygonZone, newZone);
-                     
-                     // Ensure player remains inside the merged polygon
-                     if (this.isPointInPolygon(this.player.x, this.player.y, conservativeMergedPolygon)) {
-                         this.safeZones = [{
-                             type: 'polygon',
-                             points: conservativeMergedPolygon,
-                             bounds: this.calculatePolygonBounds(conservativeMergedPolygon)
-                         }];
-                     } else {
-                         // If player would be outside, use the original merging approach
-                         const mergedPoints = [...existingPolygonZone.points, ...newZone.points];
-                         const mergedPolygon = this.createConvexHull(mergedPoints);
-                         this.safeZones = [{
-                             type: 'polygon',
-                             points: mergedPolygon,
-                             bounds: this.calculatePolygonBounds(mergedPolygon)
-                         }];
-                     }
-                 } else {
-                     // Level 8 and 10: Create a merged polygon that combines the existing area with the new area
-                     const mergedPoints = [...existingPolygonZone.points, ...newZone.points];
-                     
-                     // Create convex hull to create a proper merged polygon
-                     const mergedPolygon = this.createConvexHull(mergedPoints);
-                     
-                     // Replace the existing zone with the merged zone
-                     this.safeZones = [{
-                         type: 'polygon',
-                         points: mergedPolygon,
-                         bounds: this.calculatePolygonBounds(mergedPolygon)
-                     }];
-                 }
+                                                       if (existingPolygonZone) {
+                   if (this.currentLevel === 11) {
+                       // Level 11: Just use the new zone directly (it already includes the existing area)
+                       // The createLevel11Polygon method already handles the merging correctly
+                       this.safeZones = [newZone];
+                   } else {
+                      // Level 8 and 10: Create a merged polygon that combines the existing area with the new area
+                      const mergedPoints = [...existingPolygonZone.points, ...newZone.points];
+                      
+                      // Create convex hull to create a proper merged polygon
+                      const mergedPolygon = this.createConvexHull(mergedPoints);
+                      
+                      // Replace the existing zone with the merged zone
+                      this.safeZones = [{
+                          type: 'polygon',
+                          points: mergedPolygon,
+                          bounds: this.calculatePolygonBounds(mergedPolygon)
+                      }];
+                  }
              } else {
                  // If no existing polygon, just use the new zone
                  this.safeZones = [newZone];
@@ -1669,9 +1718,100 @@ class Game {
         return hull;
     }
     
-         crossProduct(p1, p2, p3) {
+                  crossProduct(p1, p2, p3) {
          return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
      }
+     
+     spawnPowerUp() {
+         // Spawn a random power-up at a random position
+         const powerUpTypes = ['rabbit', 'turtle', 'star'];
+         const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+         
+         let powerUpX, powerUpY;
+         let attempts = 0;
+         
+         do {
+             powerUpX = Math.random() * (this.canvas.width - 100) + 50;
+             powerUpY = Math.random() * (this.canvas.height - 100) + 50;
+             attempts++;
+         } while (this.isPositionInSafeZone(powerUpX, powerUpY) && attempts < 50);
+         
+         this.powerUps.push({
+             x: powerUpX,
+             y: powerUpY,
+             radius: 8,
+             type: randomType,
+             createdAt: Date.now(),
+             lifespan: 8000 // 8 seconds
+         });
+     }
+     
+     updatePowerUps() {
+         const currentTime = Date.now();
+         
+         // Remove expired power-ups
+         for (let i = this.powerUps.length - 1; i >= 0; i--) {
+             const powerUp = this.powerUps[i];
+             if (currentTime - powerUp.createdAt >= powerUp.lifespan) {
+                 this.powerUps.splice(i, 1);
+             }
+         }
+         
+         // Spawn new power-ups every 3 seconds
+         if (currentTime - this.powerUpSpawnTime >= this.powerUpSpawnInterval) {
+             this.spawnPowerUp();
+             this.powerUpSpawnTime = currentTime;
+         }
+         
+         // Update active power-up timers
+         if (this.playerPowerUps.speedBoost > 0) {
+             this.playerPowerUps.speedBoost -= 16; // Assuming 60fps
+             if (this.playerPowerUps.speedBoost <= 0) {
+                 this.playerPowerUps.speedBoost = 0;
+             }
+         }
+         
+         if (this.playerPowerUps.invincibility > 0) {
+             this.playerPowerUps.invincibility -= 16;
+             if (this.playerPowerUps.invincibility <= 0) {
+                 this.playerPowerUps.invincibility = 0;
+             }
+         }
+         
+         if (this.enemySlowEffect > 0) {
+             this.enemySlowEffect -= 16;
+             if (this.enemySlowEffect <= 0) {
+                 this.enemySlowEffect = 0;
+             }
+         }
+     }
+    
+    checkForEnclosedUnsafeAreas(newPolygon) {
+        // Check if the new polygon would create any enclosed unsafe areas within the safe zone
+        // This is a simplified check - we'll sample points within the polygon to see if any are unsafe
+        
+        // Get the bounding box of the new polygon
+        const bounds = this.calculatePolygonBounds(newPolygon);
+        
+        // Sample points within the polygon to check if any unsafe areas would be enclosed
+        const samplePoints = [];
+        const step = 20; // Sample every 20 pixels
+        
+        for (let x = bounds.minX; x <= bounds.maxX; x += step) {
+            for (let y = bounds.minY; y <= bounds.maxY; y += step) {
+                // Check if this point is inside the new polygon
+                if (this.isPointInPolygon(x, y, newPolygon)) {
+                    // Check if this point is currently in an unsafe area
+                    if (!this.isPositionInSafeZone(x, y)) {
+                        samplePoints.push({ x, y });
+                    }
+                }
+            }
+        }
+        
+        // If we found any unsafe points within the new polygon, it means we're enclosing unsafe areas
+        return samplePoints.length > 0;
+    }
      
            createLevel8Polygon(points) {
           // Level 8: Create polygon that matches exact drawn shape + initial area
@@ -1738,54 +1878,123 @@ class Game {
           return [...points];
       }
       
-      createLevel11Polygon(points) {
-          // Level 11: Create polygon that matches exact drawn shape + initial area (same as Level 8)
-          return this.createLevel8Polygon(points);
-      }
+                      createLevel11Polygon(points) {
+         // Level 11: Create new corners every time, then check for enclosed areas
+         if (this.player.exitPosition) {
+             // Start with the exact drawn line points
+             const exactPolygon = [...points];
+             
+             // Find the existing zone (either polygon or rectangle)
+             let existingZone = null;
+             
+             // First priority: look for existing polygon
+             for (const zone of this.safeZones) {
+                 if (zone.type === 'polygon') {
+                     existingZone = zone;
+                     break;
+                 }
+             }
+             
+             // Second priority: if no polygon, look for the initial rectangle
+             if (!existingZone) {
+                 for (const zone of this.safeZones) {
+                     if (zone.type === 'rectangle' && zone.x === 350 && zone.y === 250 && zone.width === 100 && zone.height === 100) {
+                         existingZone = zone;
+                         break;
+                     }
+                 }
+             }
+             
+             // Add points from the existing zone to connect the drawn line to it
+             if (existingZone) {
+                 let zonePoints = [];
+                 
+                 // Get points from the zone
+                 if (existingZone.type === 'polygon') {
+                     zonePoints = existingZone.points;
+                 } else {
+                     // Convert rectangle to points
+                     zonePoints = [
+                         { x: existingZone.x, y: existingZone.y },
+                         { x: existingZone.x + existingZone.width, y: existingZone.y },
+                         { x: existingZone.x + existingZone.width, y: existingZone.y + existingZone.height },
+                         { x: existingZone.x, y: existingZone.y + existingZone.height }
+                     ];
+                 }
+                 
+                 // Find the closest point on the existing zone to connect to
+                 const lastDrawnPoint = points[points.length - 1];
+                 let closestPoint = zonePoints[0];
+                 let closestDistance = Math.sqrt(
+                     Math.pow(lastDrawnPoint.x - zonePoints[0].x, 2) + 
+                     Math.pow(lastDrawnPoint.y - zonePoints[0].y, 2)
+                 );
+                 
+                 for (const zonePoint of zonePoints) {
+                     const distance = Math.sqrt(
+                         Math.pow(lastDrawnPoint.x - zonePoint.x, 2) + 
+                         Math.pow(lastDrawnPoint.y - zonePoint.y, 2)
+                     );
+                     if (distance < closestDistance) {
+                         closestDistance = distance;
+                         closestPoint = zonePoint;
+                     }
+                 }
+                 
+                 // Add the closest point first, then the other points in order
+                 exactPolygon.push(closestPoint);
+                 
+                 // Add the remaining points in order, starting from the closest point
+                 const startIndex = zonePoints.indexOf(closestPoint);
+                 for (let i = 1; i < zonePoints.length; i++) {
+                     const index = (startIndex + i) % zonePoints.length;
+                     exactPolygon.push(zonePoints[index]);
+                 }
+             }
+             
+             // Connect back to the exit position to complete the polygon
+             exactPolygon.push({ x: this.player.exitPosition.x, y: this.player.exitPosition.y });
+             
+             // Check if the new polygon would create any enclosed unsafe areas
+             const hasEnclosedUnsafeAreas = this.checkForEnclosedUnsafeAreas(exactPolygon);
+             
+             if (hasEnclosedUnsafeAreas) {
+                 // If there are enclosed unsafe areas, fill them by creating a comprehensive polygon
+                 const allPoints = [...exactPolygon];
+                 
+                 // Add points from the existing zone to ensure complete coverage
+                 if (existingZone && existingZone.type === 'polygon') {
+                     allPoints.push(...existingZone.points);
+                 }
+                 
+                 // Create a convex hull to fill the enclosed areas
+                 return this.createConvexHull(allPoints);
+             } else {
+                 // No enclosed unsafe areas, return the exact polygon shape
+                 return exactPolygon;
+             }
+         }
+         
+         // Fallback: just return the drawn points if no exit position
+         return [...points];
+     }
       
-      createConservativeMergedPolygon(existingZone, newZone) {
-          // Level 11: Create a conservative merged polygon that doesn't expand beyond original + new areas
-          
-          // Get all points from both zones
-          const allPoints = [...existingZone.points, ...newZone.points];
-          
-          // Calculate the bounding box of the combined areas
-          const bounds = this.calculatePolygonBounds(allPoints);
-          
-          // Create a polygon that follows the outer boundary of both zones
-          // This approach ensures we don't add extra area beyond what's already covered
-          const conservativePolygon = [];
-          
-          // Start with points from the existing zone
-          conservativePolygon.push(...existingZone.points);
-          
-          // Add points from the new zone that are outside the existing zone
-          for (const point of newZone.points) {
-              if (!this.isPointInPolygon(point.x, point.y, existingZone.points)) {
-                  conservativePolygon.push(point);
-              }
-          }
-          
-          // If we have enough points, create a simplified polygon
-          if (conservativePolygon.length >= 3) {
-              // Use convex hull to create a clean polygon, but limit expansion
-              const hull = this.createConvexHull(conservativePolygon);
-              
-              // Check if the hull area is significantly larger than the sum of original areas
-              const originalArea = this.calculatePolygonArea(existingZone.points) + this.calculatePolygonArea(newZone.points);
-              const hullArea = this.calculatePolygonArea(hull);
-              
-              // If hull expands too much, use a more conservative approach
-              if (hullArea > originalArea * 1.2) { // Allow 20% expansion max
-                  return conservativePolygon; // Return the un-hulled version
-              } else {
-                  return hull;
-              }
-          }
-          
-          // Fallback: return the combined points
-          return conservativePolygon;
-      }
+             createConservativeMergedPolygon(existingZone, newZone) {
+           // Level 11: Create a conservative merged polygon that extends the existing area with the new area
+           
+           // For Level 11, we want to preserve the existing polygon and just extend it
+           // Start with the existing zone points
+           const mergedPolygon = [...existingZone.points];
+           
+           // Add the new zone points that extend the area
+           mergedPolygon.push(...newZone.points);
+           
+           // Create a convex hull to ensure we have a clean polygon
+           // This will create the minimal convex polygon that contains both areas
+           const hull = this.createConvexHull(mergedPolygon);
+           
+           return hull;
+       }
      
           updateEnemies() {
          for (const enemy of this.enemies) {
@@ -1829,21 +2038,31 @@ class Game {
                  continue; // Skip the rest of the enemy update logic for level 9 AI enemies
              }
              
-             // For level 5, enemies don't chase - they only wander
+                             // For level 5, enemies don't chase - they only wander
              if (this.currentLevel === 5) {
-                // Wander randomly only
-                if (!enemy.wanderAngle) {
-                    enemy.wanderAngle = Math.random() * Math.PI * 2;
-                }
+                                 // Wander randomly only
+                 if (!enemy.wanderAngle) {
+                     enemy.wanderAngle = Math.random() * Math.PI * 2;
+                 }
+                 
+                 if (Math.random() < 0.02) {
+                     enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
+                 }
+                 
+                 // Calculate enemy speed (with turtle effect for Level 11)
+                 let enemySpeed = enemy.speed * 0.5;
+                 if (this.currentLevel === 11 && this.enemySlowEffect > 0) {
+                     enemySpeed *= 0.3; // 70% speed reduction
+                 }
+                 
+                 const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemySpeed;
+                 const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemySpeed;
                 
-                if (Math.random() < 0.02) {
-                    enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
-                }
+                // For Level 11 moving apples, allow movement within safe zones
+                const canMoveToPosition = (this.currentLevel === 11 && enemy.isMovingApple) ? 
+                    true : !this.isPositionInSafeZone(newX, newY);
                 
-                const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemy.speed * 0.5;
-                const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemy.speed * 0.5;
-                
-                if (!this.isPositionInSafeZone(newX, newY) && 
+                if (canMoveToPosition && 
                     newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
                     newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
                     enemy.x = newX;
@@ -1898,6 +2117,12 @@ class Game {
             const chaseRange = 150;
             const lineChaseRange = 100;
             
+            // Calculate enemy speed (with turtle effect for Level 11)
+            let enemySpeed = enemy.speed;
+            if (this.currentLevel === 11 && this.enemySlowEffect > 0) {
+                enemySpeed *= 0.3; // 70% speed reduction
+            }
+            
             if (lineTarget && lineDistance <= lineChaseRange && !this.player.isInSafeZone) {
                 // Chase the line
                 const lineDx = lineTarget.x - enemy.x;
@@ -1905,10 +2130,12 @@ class Game {
                 const lineDist = Math.sqrt(lineDx * lineDx + lineDy * lineDy);
                 
                 if (lineDist > 0) {
-                    const newX = enemy.x + (lineDx / lineDist) * enemy.speed;
-                    const newY = enemy.y + (lineDy / lineDist) * enemy.speed;
+                    const newX = enemy.x + (lineDx / lineDist) * enemySpeed;
+                    const newY = enemy.y + (lineDy / lineDist) * enemySpeed;
                     
-                    if (!this.isPositionInSafeZone(newX, newY) && 
+                    const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                    
+                    if (canMoveToPosition && 
                         newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
                         newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
                         enemy.x = newX;
@@ -1920,10 +2147,12 @@ class Game {
             } else if (distance <= chaseRange && !this.player.isInSafeZone) {
                 // Chase the player
                 if (distance > 0) {
-                    const newX = enemy.x + (dx / distance) * enemy.speed;
-                    const newY = enemy.y + (dy / distance) * enemy.speed;
+                    const newX = enemy.x + (dx / distance) * enemySpeed;
+                    const newY = enemy.y + (dy / distance) * enemySpeed;
                     
-                    if (!this.isPositionInSafeZone(newX, newY) && 
+                    const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                    
+                    if (canMoveToPosition && 
                         newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
                         newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
                         enemy.x = newX;
@@ -1932,20 +2161,30 @@ class Game {
                         enemy.wanderAngle = Math.random() * Math.PI * 2;
                     }
                 }
-            } else {
-                // Wander randomly
-                if (!enemy.wanderAngle) {
-                    enemy.wanderAngle = Math.random() * Math.PI * 2;
-                }
+                         } else {
+                 // Wander randomly
+                 if (!enemy.wanderAngle) {
+                     enemy.wanderAngle = Math.random() * Math.PI * 2;
+                 }
+                 
+                 if (Math.random() < 0.02) {
+                     enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
+                 }
+                 
+                 // Calculate enemy speed (with turtle effect for Level 11)
+                 let enemySpeed = enemy.speed * 0.5;
+                 if (this.currentLevel === 11 && this.enemySlowEffect > 0) {
+                     enemySpeed *= 0.3; // 70% speed reduction
+                 }
+                 
+                 const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemySpeed;
+                 const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemySpeed;
                 
-                if (Math.random() < 0.02) {
-                    enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
-                }
+                // For Level 11 moving apples, allow movement within safe zones
+                const canMoveToPosition = (this.currentLevel === 11 && enemy.isMovingApple) ? 
+                    true : !this.isPositionInSafeZone(newX, newY);
                 
-                const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemy.speed * 0.5;
-                const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemy.speed * 0.5;
-                
-                if (!this.isPositionInSafeZone(newX, newY) && 
+                if (canMoveToPosition && 
                     newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
                     newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
                     enemy.x = newX;
@@ -2104,40 +2343,97 @@ class Game {
         
                  // Draw enemies
          for (const enemy of this.enemies) {
-             // Level 9 AI enemies are drawn in blue like AI players
-             if (this.currentLevel === 9 && enemy.isAI) {
+             if (this.currentLevel === 11 && enemy.isMovingApple) {
+                 // Level 11: Draw moving apples in green
+                 this.ctx.fillStyle = '#0f0';
+                 this.ctx.beginPath();
+                 this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                 this.ctx.fill();
+                 
+                 // Draw apple stem
+                 this.ctx.strokeStyle = '#8B4513';
+                 this.ctx.lineWidth = 2;
+                 this.ctx.beginPath();
+                 this.ctx.moveTo(enemy.x, enemy.y - enemy.radius);
+                 this.ctx.lineTo(enemy.x, enemy.y - enemy.radius - 5);
+                 this.ctx.stroke();
+             } else if (this.currentLevel === 9 && enemy.isAI) {
+                 // Level 9 AI enemies are drawn in blue like AI players
                  this.ctx.fillStyle = '#0080ff'; // Blue for AI enemies
-             } else {
-                 this.ctx.fillStyle = '#f00'; // Red for regular enemies
-             }
-             
-             this.ctx.beginPath();
-             this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-             this.ctx.fill();
-             
-             // Draw outline for AI enemies
-             if (this.currentLevel === 9 && enemy.isAI) {
+                 this.ctx.beginPath();
+                 this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                 this.ctx.fill();
+                 
+                 // Draw outline for AI enemies
                  this.ctx.strokeStyle = '#fff';
                  this.ctx.lineWidth = 2;
                  this.ctx.stroke();
+             } else {
+                 // Regular enemies
+                 this.ctx.fillStyle = '#f00'; // Red for regular enemies
+                 this.ctx.beginPath();
+                 this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                 this.ctx.fill();
              }
          }
         
-        // Draw apples
-        this.ctx.fillStyle = '#0f0';
-        for (const apple of this.apples) {
-            this.ctx.beginPath();
-            this.ctx.arc(apple.x, apple.y, apple.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Draw apple stem
-            this.ctx.strokeStyle = '#8B4513';
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            this.ctx.moveTo(apple.x, apple.y - apple.radius);
-            this.ctx.lineTo(apple.x, apple.y - apple.radius - 5);
-            this.ctx.stroke();
-        }
+                 // Draw apples
+         this.ctx.fillStyle = '#0f0';
+         for (const apple of this.apples) {
+             this.ctx.beginPath();
+             this.ctx.arc(apple.x, apple.y, apple.radius, 0, Math.PI * 2);
+             this.ctx.fill();
+             
+             // Draw apple stem
+             this.ctx.strokeStyle = '#8B4513';
+             this.ctx.lineWidth = 2;
+             this.ctx.beginPath();
+             this.ctx.moveTo(apple.x, apple.y - apple.radius);
+             this.ctx.lineTo(apple.x, apple.y - apple.radius - 5);
+             this.ctx.stroke();
+         }
+         
+         // Draw power-ups (Level 11)
+         if (this.currentLevel === 11) {
+             for (const powerUp of this.powerUps) {
+                 switch (powerUp.type) {
+                     case 'rabbit':
+                         this.ctx.fillStyle = '#FF6B6B'; // Red-orange
+                         break;
+                     case 'turtle':
+                         this.ctx.fillStyle = '#4ECDC4'; // Teal
+                         break;
+                     case 'star':
+                         this.ctx.fillStyle = '#FFE66D'; // Yellow
+                         break;
+                 }
+                 
+                 this.ctx.beginPath();
+                 this.ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                 this.ctx.fill();
+                 
+                 // Draw power-up symbol
+                 this.ctx.fillStyle = '#fff';
+                 this.ctx.font = '12px Arial';
+                 this.ctx.textAlign = 'center';
+                 this.ctx.textBaseline = 'middle';
+                 
+                 let symbol = '';
+                 switch (powerUp.type) {
+                     case 'rabbit':
+                         symbol = '🐰';
+                         break;
+                     case 'turtle':
+                         symbol = '🐢';
+                         break;
+                     case 'star':
+                         symbol = '⭐';
+                         break;
+                 }
+                 
+                 this.ctx.fillText(symbol, powerUp.x, powerUp.y);
+             }
+         }
         
         // Draw AI player for level 6 and 7
         if (this.currentLevel === 6 || this.currentLevel === 7) {
@@ -2210,18 +2506,29 @@ class Game {
             this.ctx.strokeStyle = '#fff';
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
-        } else {
-            // Draw player normally for other levels
-            this.ctx.fillStyle = this.player.isInSafeZone ? '#0f0' : '#ff0';
-            this.ctx.beginPath();
-            this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Draw player outline
-            this.ctx.strokeStyle = '#fff';
-            this.ctx.lineWidth = 2;
-            this.ctx.stroke();
-        }
+                 } else {
+             // Draw player normally for other levels
+             this.ctx.fillStyle = this.player.isInSafeZone ? '#0f0' : '#ff0';
+             
+             // Level 11: Show invincibility effect
+             if (this.currentLevel === 11 && this.playerPowerUps.invincibility > 0) {
+                 // Pulsing effect for invincibility
+                 const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+                 this.ctx.globalAlpha = pulse;
+             }
+             
+             this.ctx.beginPath();
+             this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+             this.ctx.fill();
+             
+             // Draw player outline
+             this.ctx.strokeStyle = '#fff';
+             this.ctx.lineWidth = 2;
+             this.ctx.stroke();
+             
+             // Reset alpha
+             this.ctx.globalAlpha = 1;
+         }
     }
     
     gameLoop() {
@@ -2251,12 +2558,9 @@ class Game {
                      this.completeLevel();
                      return;
                  }
-             } else if (this.currentLevel === 11) {
-                 // Level 11: Complete when board is 85% filled (like level 8)
-                 if (this.calculateBoardCompletion() >= 85) {
-                     this.completeLevel();
-                     return;
-                 }
+                           } else if (this.currentLevel === 11) {
+                  // Level 11: No completion by board filling - only by eating 3 enemies
+                  // Completion is handled in checkCollisions when all enemies are eaten
              } else {
                  // Check for level completion (85% board filled OR all enemies converted to apples)
                  if (this.calculateBoardCompletion() >= 85 || (this.enemies.length === 0 && this.apples.length === 0)) {
@@ -2265,11 +2569,16 @@ class Game {
                  }
              }
             
-            this.updatePlayer();
-            this.updateAIPlayer(); // Update AI player for level 6
-            this.updateEnemies();
-            this.checkCollisions();
-            this.checkTemporaryZones(); // Check for expired temporary zones
+                         this.updatePlayer();
+             this.updateAIPlayer(); // Update AI player for level 6
+             this.updateEnemies();
+             this.checkCollisions();
+             this.checkTemporaryZones(); // Check for expired temporary zones
+             
+             // Update power-ups for Level 11
+             if (this.currentLevel === 11) {
+                 this.updatePowerUps();
+             }
             this.render();
             this.updateDisplay();
             requestAnimationFrame(() => this.gameLoop());
@@ -2330,48 +2639,67 @@ class Game {
         this.showScreen('gameOverScreen');
     }
     
-    catchAI(caughtAI, index = -1) {
-        // Level 7: When catching an AI, expand safe area and spawn new AI
-        if (this.currentLevel === 7) {
-            // Add score
-            this.score += 100;
-            
-            // Create a large safe zone around the caught AI position
-            const expansionRadius = 150;
-            const expansionZone = {
-                type: 'polygon',
-                points: [
-                    { x: caughtAI.x - expansionRadius, y: caughtAI.y - expansionRadius },
-                    { x: caughtAI.x + expansionRadius, y: caughtAI.y - expansionRadius },
-                    { x: caughtAI.x + expansionRadius, y: caughtAI.y + expansionRadius },
-                    { x: caughtAI.x - expansionRadius, y: caughtAI.y + expansionRadius }
-                ],
-                bounds: {
-                    minX: caughtAI.x - expansionRadius,
-                    maxX: caughtAI.x + expansionRadius,
-                    minY: caughtAI.y - expansionRadius,
-                    maxY: caughtAI.y + expansionRadius
+            catchAI(caughtAI, index = -1) {
+            // Level 7: When catching an AI, create random safe area and spawn new AI
+            if (this.currentLevel === 7) {
+                // Add score
+                this.score += 100;
+                
+                // Calculate total field area
+                const totalFieldArea = this.canvas.width * this.canvas.height;
+                
+                // Calculate target area (10% to 20% of total field)
+                const minArea = totalFieldArea * 0.10;
+                const maxArea = totalFieldArea * 0.20;
+                const targetArea = Math.random() * (maxArea - minArea) + minArea;
+                
+                // Calculate random dimensions for the safe area
+                const aspectRatio = Math.random() * 2 + 0.5; // Between 0.5 and 2.5
+                const width = Math.sqrt(targetArea * aspectRatio);
+                const height = targetArea / width;
+                
+                // Ensure the area fits within the canvas bounds
+                const maxWidth = Math.min(width, this.canvas.width - 100);
+                const maxHeight = Math.min(height, this.canvas.height - 100);
+                
+                // Random position for the safe area
+                const margin = 50;
+                const x = Math.random() * (this.canvas.width - maxWidth - 2 * margin) + margin;
+                const y = Math.random() * (this.canvas.height - maxHeight - 2 * margin) + margin;
+                
+                // Create random rectangular safe zone
+                const randomZone = {
+                    type: 'rectangle',
+                    x: x,
+                    y: y,
+                    width: maxWidth,
+                    height: maxHeight,
+                    bounds: {
+                        minX: x,
+                        maxX: x + maxWidth,
+                        minY: y,
+                        maxY: y + maxHeight
+                    }
+                };
+                
+                // Add to existing safe zones (no merging)
+                this.safeZones.push(randomZone);
+                
+                // Remove the caught AI
+                if (index !== -1) {
+                    this.aiPlayers.splice(index, 1);
+                } else {
+                    // If it's the main aiPlayer, reset it and add a new one to aiPlayers
+                    this.aiPlayer.x = -100; // Move off-screen
+                    this.aiPlayer.y = -100;
                 }
-            };
-            
-            // Merge with existing safe zones
-            this.mergeSafeZones(expansionZone);
-            
-            // Remove the caught AI
-            if (index !== -1) {
-                this.aiPlayers.splice(index, 1);
-            } else {
-                // If it's the main aiPlayer, reset it and add a new one to aiPlayers
-                this.aiPlayer.x = -100; // Move off-screen
-                this.aiPlayer.y = -100;
+                
+                // Spawn a new AI player
+                this.spawnNewAI();
+                
+                this.updateDisplay();
             }
-            
-            // Spawn a new AI player
-            this.spawnNewAI();
-            
-            this.updateDisplay();
         }
-    }
     
     spawnNewAI() {
         // Spawn a new AI player at a random position outside safe zones

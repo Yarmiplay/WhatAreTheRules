@@ -508,19 +508,19 @@ class Game {
                 });
                 this.enemies.splice(i, 1);
                 
-                // Level 11: Check if all enemies are gone
-                if (this.currentLevel === 11 && this.enemies.length === 0) {
-                    console.log('Level 11: All enemies removed! Completing level...');
-                    this.completeLevel();
-                    return;
-                }
-                
                 // For level 5, mark the zone as permanent if an enemy was killed
                 if (this.currentLevel === 5) {
                     newSafeZone.enemyKilled = true;
                     newSafeZone.temporary = false;
                 }
             }
+        }
+        
+        // Level 11: Check if all enemies are gone
+        if (this.currentLevel === 11 && this.enemies.length === 0) {
+            console.log('Level 11: All enemies removed! Completing level...');
+            this.completeLevel();
+            return;
         }
                 
                         // Add score for capturing area

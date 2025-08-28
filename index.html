@@ -12,8 +12,11 @@
         <div id="mainMenu" class="screen active">
             <div class="menu-content">
                 <h1>What are the rules?</h1>
-                <p>Figure it out, good luck</p>
-                <button id="startButton" class="menu-button">Start Game</button>
+                <p>Every bug is a feature, by design</p>
+                <div class="menu-buttons">
+                    <button id="startButton" class="menu-button">Start Game</button>
+                    <button id="speedrunToggle" class="speedrun-button">Normal Mode</button>
+                </div>
             </div>
         </div>
 
@@ -50,6 +53,7 @@
         <div id="levelCompleteScreen" class="screen overlay">
             <div class="menu-content">
                 <h2>Level Complete!</h2>
+                <p id="levelCompleteTitle" class="level-complete-title"></p>
                 <p id="levelCompleteScore">Score: 0</p>
                 <p id="levelCompleteTime">Time: 0:00.00</p>
                 <button id="nextLevelButton" class="menu-button">Next Level</button>

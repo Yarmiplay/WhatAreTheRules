@@ -83,6 +83,35 @@ body {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+.menu-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.speedrun-button {
+    background: linear-gradient(45deg, #f44336, #d32f2f);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.speedrun-button.active {
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+}
+
+.speedrun-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
 .menu-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
@@ -101,23 +130,39 @@ body {
     grid-template-columns: repeat(5, 1fr);
     gap: 15px;
     margin: 2rem 0;
-    max-width: 500px;
+    max-width: 800px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 10px;
 }
 
 .level-button {
-    width: 80px;
-    height: 80px;
+    width: 120px;
+    height: 100px;
     border-radius: 15px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.1);
     color: white;
-    font-size: 1.5rem;
-    font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 8px;
+}
+
+.level-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.level-title {
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.1;
+    opacity: 0.9;
 }
 
 .level-button:hover {
@@ -182,6 +227,14 @@ body {
     color: #4CAF50;
 }
 
+.level-complete-title {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: #FFD700;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
 @media (max-width: 768px) {
     .menu-content {
         padding: 1.5rem;
@@ -205,11 +258,20 @@ body {
     .level-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
+        max-width: 400px;
+        max-height: 500px;
     }
     
     .level-button {
-        width: 60px;
-        height: 60px;
-        font-size: 1.2rem;
+        width: 80px;
+        height: 70px;
+    }
+    
+    .level-number {
+        font-size: 1.4rem;
+    }
+    
+    .level-title {
+        font-size: 0.6rem;
     }
 }

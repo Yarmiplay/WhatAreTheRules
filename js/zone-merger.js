@@ -3,14 +3,12 @@ import { createConvexHull, calculatePolygonBounds, isPointInPolygon } from './ut
 import { GAME_CONFIG } from './config.js';
 
 export function mergeSafeZones(newZone, currentLevel, safeZones, enemies, apples) {
-    // Level 4, 8, 10, 11, 12, and 13: Merge new zone with existing zones
-    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13) {
+    // Level 4, 8, 10, 11, 12, 13, 15, and 16: Merge new zone with existing zones
+    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16) {
         return mergeLevel8Style(newZone, currentLevel, safeZones, enemies, apples);
-    } else if (currentLevel === 4) {
+    } else if (currentLevel === 4 || currentLevel === 14) {
         return mergeLevel4Style(newZone, safeZones, enemies, apples);
     }
-    
-    // For other levels, just add the new zone
     return [...safeZones, newZone];
 }
 

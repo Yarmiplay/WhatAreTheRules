@@ -227,11 +227,13 @@ class Game {
             levelButton.appendChild(levelNumber);
             levelButton.appendChild(levelTitle);
             
-            if (i > this.unlockedLevels) {
-                levelButton.classList.add('locked');
-            } else if (this.completedLevels.has(i)) {
-                levelButton.classList.add('completed');
-            }
+                         if (i > this.unlockedLevels) {
+                 levelButton.classList.add('locked');
+             } else if (this.completedLevels.has(i)) {
+                 levelButton.classList.add('completed');
+             } else if (i >= 16 && i <= 20) {
+                 levelButton.classList.add('advanced');
+             }
             
             levelButton.addEventListener('click', () => {
                 if (i <= this.unlockedLevels) {
@@ -300,6 +302,7 @@ class Game {
         this.player.isDrawing = false;
         this.player.line = [];
         this.player.exitPosition = null;
+        this.player.currentDirection = 'none'; // Reset direction for Level 16
         
         // Reset AI player
         this.aiPlayer.x = 400;
@@ -317,16 +320,19 @@ class Game {
         this.apples = [];
         this.lineSegments = [];
         
+        // Level 15: Reset enemy movement tracking
+        this.enemyLastPositions = new Map();
+        
         // Reset timer
         this.levelTime = 0;
         this.startTime = Date.now();
         
-        // Reset shrinking timer for level 13
+        // Reset shrinking timer for level 13 and 14
         this.shrinkingTimer = null;
         
-        // Reset power-up system for Level 11 and 13
-        if (this.currentLevel === 11 || this.currentLevel === 13) {
-            this.powerUpSystem = new PowerUpSystem(this.canvas, (x, y) => this.isPositionInSafeZone(x, y));
+        // Reset power-up system for Level 11, 13, 15, and 16
+        if (this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) {
+            this.powerUpSystem = new PowerUpSystem(this.canvas, (x, y) => this.isPositionInSafeZone(x, y), this.currentLevel);
             this.powerUpSystem.spawnPowerUp(); // Spawn initial power-up
         } else {
             this.powerUpSystem = null;
@@ -348,6 +354,12 @@ class Game {
             this.setupLevel12();
         } else if (this.currentLevel === 13) {
             this.setupLevel13();
+        } else if (this.currentLevel === 14) {
+            this.setupLevel14();
+        } else if (this.currentLevel === 15) {
+            this.setupLevel15();
+        } else if (this.currentLevel === 16) {
+            this.setupLevel16();
         } else {
             this.setupRegularLevel();
         }
@@ -392,6 +404,50 @@ class Game {
     setupLevel13() {
         // Create enemies like level 11 (3 enemies)
         this.createEnemies(3);
+    }
+    
+    setupLevel14() {
+        // Create enemies like level 4 (2 enemies)
+        this.createEnemies(2);
+    }
+    
+    setupLevel15() {
+        // Create enemies like level 11 (3 enemies)
+        this.createEnemies(3);
+    }
+    
+    setupLevel16() {
+        // Create 4 ghost enemies for Pacman level
+        this.enemies = [
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            }
+        ];
     }
     
     setupRegularLevel() {
@@ -509,7 +565,8 @@ class Game {
             if (this.currentLevel === 2 || this.currentLevel === 3 || this.currentLevel === 4 || 
                 this.currentLevel === 5 || this.currentLevel === 8 || this.currentLevel === 9 || 
                 this.currentLevel === 10 || this.currentLevel === 11 || this.currentLevel === 12 || 
-                this.currentLevel === 13) {
+                this.currentLevel === 13 || this.currentLevel === 14 || this.currentLevel === 15 || 
+                this.currentLevel === 16) {
                 // For polygon levels, create a proper polygon area
                 const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
                 const newSafeZone = {
@@ -518,8 +575,8 @@ class Game {
                     bounds: calculatePolygonBounds(polygon)
                 };
                 
-                // For level 5, make safe zones temporary (8 seconds) unless an enemy was killed
-                if (this.currentLevel === 5) {
+                // For level 5 and 14, make safe zones temporary (8 seconds) unless an enemy was killed
+                if (this.currentLevel === 5 || this.currentLevel === 14) {
                     newSafeZone.temporary = true;
                     newSafeZone.createdAt = Date.now();
                     newSafeZone.lifespan = 8000; // 8 seconds
@@ -529,22 +586,20 @@ class Game {
                 // For level 12, the merged polygon will be marked as temporary after merging
                 // (The timer is set in the mergeSafeZones function for Level 12)
                 
-                // Level 4, 7, 8, 9, 10, 11, 12, and 13: Merge with existing safe zones
+                // Level 4, 7, 8, 9, 10, 11, 12, 13, 14, 15: Merge with existing safe zones
                 if (this.currentLevel === 4 || this.currentLevel === 7 || this.currentLevel === 8 || 
-                    this.currentLevel === 9 || this.currentLevel === 10 || this.currentLevel === 11 || 
-                    this.currentLevel === 12 || this.currentLevel === 13) {
+                                    this.currentLevel === 9 || this.currentLevel === 10 || this.currentLevel === 11 || 
+                this.currentLevel === 12 || this.currentLevel === 13 || this.currentLevel === 14 || 
+                this.currentLevel === 15) {
                     this.safeZones = mergeSafeZones(newSafeZone, this.currentLevel, this.safeZones, this.enemies, this.apples);
                 } else {
                     this.safeZones.push(newSafeZone);
                 }
                 
                 // Check for enemies trapped inside the polygon
-                console.log(`Level 11: Checking ${this.enemies.length} enemies against polygon`);
                 for (let i = this.enemies.length - 1; i >= 0; i--) {
                     const enemy = this.enemies[i];
-                    console.log(`Level 11: Enemy ${i} at (${enemy.x}, ${enemy.y})`);
                     if (isPointInPolygon(enemy.x, enemy.y, polygon)) {
-                        console.log(`Level 11: Enemy ${i} is inside polygon!`);
                         // Convert enemy to apple for all levels
                         const points = this.currentLevel === 9 ? GAME_CONFIG.LEVEL_9_APPLE_POINTS : GAME_CONFIG.REGULAR_APPLE_POINTS;
                         this.apples.push({
@@ -555,18 +610,19 @@ class Game {
                         });
                         this.enemies.splice(i, 1);
                         
-                        // Level 11 and 13: Check if all enemies are gone
-                        if ((this.currentLevel === 11 || this.currentLevel === 13) && this.enemies.length === 0) {
+                        // Level 11, 13, and 15: Check if all enemies are gone
+                        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.enemies.length === 0) {
                             console.log(`Level ${this.currentLevel}: All enemies removed! Completing level...`);
                             this.completeLevel();
                             return;
                         }
                         
                         // For level 5, mark the zone as permanent if an enemy was killed
-                        if (this.currentLevel === 5) {
+                        if (this.currentLevel === 5 && newSafeZone.temporary) {
                             newSafeZone.enemyKilled = true;
                             newSafeZone.temporary = false;
                         }
+                        // For level 14, zones remain temporary even after killing enemies (they still shrink)
                     }
                 }
                 
@@ -697,15 +753,25 @@ class Game {
             }
         } else {
             // Check enemy collisions for other levels
-            for (const enemy of this.enemies) {
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const enemy = this.enemies[i];
                 const distance = Math.sqrt(
                     Math.pow(this.player.x - enemy.x, 2) + 
                     Math.pow(this.player.y - enemy.y, 2)
                 );
                 
                 if (distance < this.player.radius + enemy.radius) {
-                    // Level 11 and 13: Check if player is invincible
-                    if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                    // Level 16: Check if ghosts are vulnerable and can be eaten
+                    if (this.currentLevel === 16 && this.powerUpSystem && this.powerUpSystem.areGhostsVulnerable()) {
+                        // Eat the ghost
+                        this.enemies.splice(i, 1);
+                        this.score += 200;
+                        this.updateDisplay();
+                        continue;
+                    }
+                    
+                    // Level 11, 13, and 15: Check if player is invincible
+                    if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                         // Player is invincible, ignore collision
                     } else {
                         this.gameOver();
@@ -728,15 +794,15 @@ class Game {
                         lineEnd.x, lineEnd.y
                     );
                     
-                    if (distance < enemy.radius) {
-                        // Level 11 and 13: Check if player is invincible
-                        if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
-                            // Player is invincible, ignore collision
-                        } else {
-                            this.gameOver();
-                            return;
-                        }
-                    }
+                                         if (distance < enemy.radius) {
+                         // Level 11, 13, and 15: Check if player is invincible
+                         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                             // Player is invincible, ignore collision
+                         } else {
+                             this.gameOver();
+                             return;
+                         }
+                     }
                 }
             }
         }
@@ -763,10 +829,29 @@ class Game {
             }
         }
         
-        // Check power-up collection (Level 11 and 13)
-        if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
+        // Check power-up collection (Level 11, 13, 15, and 16)
+        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
             if (this.powerUpSystem.checkPowerUpCollection(this.player)) {
                 this.updateDisplay();
+            }
+            
+            // Level 15: Check enemy power-up collection
+            if (this.currentLevel === 15) {
+                const enemyPowerUpResult = this.powerUpSystem.checkEnemyPowerUpCollection(this.enemies);
+                if (enemyPowerUpResult) {
+                    if (enemyPowerUpResult.type === 'split') {
+                        // Create a duplicate enemy
+                        const newEnemy = {
+                            x: enemyPowerUpResult.enemy.x,
+                            y: enemyPowerUpResult.enemy.y,
+                            radius: enemyPowerUpResult.enemy.radius,
+                            speed: enemyPowerUpResult.enemy.speed,
+                            wanderAngle: Math.random() * Math.PI * 2
+                        };
+                        this.enemies.push(newEnemy);
+                    }
+                    this.updateDisplay();
+                }
             }
         }
         
@@ -781,21 +866,57 @@ class Game {
         let dx = 0;
         let dy = 0;
         
-        // Calculate current speed (with power-up boost for Level 11 and 13)
+        // Calculate current speed (with power-up boost for Level 11, 13, 15, and 16)
         let currentSpeed = this.player.speed;
-        if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
+        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
-        if (this.keys['w'] || this.keys['ArrowUp']) dy -= currentSpeed;
-        if (this.keys['s'] || this.keys['ArrowDown']) dy += currentSpeed;
-        if (this.keys['a'] || this.keys['ArrowLeft']) dx -= currentSpeed;
-        if (this.keys['d'] || this.keys['ArrowRight']) dx += currentSpeed;
-        
-        // Normalize diagonal movement
-        if (dx !== 0 && dy !== 0) {
-            dx *= 0.707;
-            dy *= 0.707;
+        // Level 16: Cardinal direction movement with continuous movement
+        if (this.currentLevel === 16) {
+            // Initialize player direction if not set
+            if (!this.player.currentDirection) {
+                this.player.currentDirection = 'none';
+            }
+            
+            // Check for new direction input
+            if (this.keys['w'] || this.keys['ArrowUp']) {
+                this.player.currentDirection = 'up';
+            } else if (this.keys['s'] || this.keys['ArrowDown']) {
+                this.player.currentDirection = 'down';
+            } else if (this.keys['a'] || this.keys['ArrowLeft']) {
+                this.player.currentDirection = 'left';
+            } else if (this.keys['d'] || this.keys['ArrowRight']) {
+                this.player.currentDirection = 'right';
+            }
+            
+            // Apply movement based on current direction
+            switch (this.player.currentDirection) {
+                case 'up':
+                    dy -= currentSpeed;
+                    break;
+                case 'down':
+                    dy += currentSpeed;
+                    break;
+                case 'left':
+                    dx -= currentSpeed;
+                    break;
+                case 'right':
+                    dx += currentSpeed;
+                    break;
+            }
+        } else {
+            // Normal movement for other levels
+            if (this.keys['w'] || this.keys['ArrowUp']) dy -= currentSpeed;
+            if (this.keys['s'] || this.keys['ArrowDown']) dy += currentSpeed;
+            if (this.keys['a'] || this.keys['ArrowLeft']) dx -= currentSpeed;
+            if (this.keys['d'] || this.keys['ArrowRight']) dx += currentSpeed;
+            
+            // Normalize diagonal movement
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
         }
         
         this.player.x += dx;
@@ -835,22 +956,56 @@ class Game {
                     lineEnd.x, lineEnd.y
                 );
                 
-                // Only check if player center is very close to the line (within 2 pixels)
-                if (distance < 2) {
-                    // Level 11 and 13: Check if player is invincible
-                    if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
-                        // Player is invincible, ignore collision
-                    } else {
-                        this.gameOver();
-                        return;
-                    }
-                }
+                                 // Only check if player center is very close to the line (within 2 pixels)
+                 if (distance < 2) {
+                     // Level 11, 13, 15, and 16: Check if player is invincible
+                     if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                         // Player is invincible, ignore collision
+                     } else {
+                         this.gameOver();
+                         return;
+                     }
+                 }
             }
         }
     }
     
     updateEnemies() {
         for (const enemy of this.enemies) {
+            // Level 16: Special enemy behavior for Pacman
+            if (this.currentLevel === 16) {
+                this.updateLevel16Enemy(enemy);
+                continue;
+            }
+            
+            // Level 15: Track enemy position to prevent staying still
+            if (this.currentLevel === 15) {
+                const enemyId = this.enemies.indexOf(enemy);
+                const currentPos = { x: enemy.x, y: enemy.y };
+                
+                if (!this.enemyLastPositions.has(enemyId)) {
+                    this.enemyLastPositions.set(enemyId, { pos: currentPos, frames: 0 });
+                } else {
+                    const lastData = this.enemyLastPositions.get(enemyId);
+                    const distance = Math.sqrt(
+                        Math.pow(currentPos.x - lastData.pos.x, 2) + 
+                        Math.pow(currentPos.y - lastData.pos.y, 2)
+                    );
+                    
+                    if (distance < 1) { // Enemy hasn't moved significantly
+                        lastData.frames++;
+                        if (lastData.frames >= 2) { // Force movement after 2 frames
+                            enemy.x += Math.cos(enemy.wanderAngle) * enemy.speed * 0.5;
+                            enemy.y += Math.sin(enemy.wanderAngle) * enemy.speed * 0.5;
+                            enemy.wanderAngle = Math.random() * Math.PI * 2;
+                            lastData.frames = 0;
+                        }
+                    } else {
+                        lastData.frames = 0;
+                    }
+                    lastData.pos = { x: enemy.x, y: enemy.y };
+                }
+            }
             const dx = this.player.x - enemy.x;
             const dy = this.player.y - enemy.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -942,6 +1097,24 @@ class Game {
                 continue; // Skip the rest of the enemy update logic for level 5
             }
             
+            // Level 15: Check if enemy should seek power-ups
+            let powerUpTarget = null;
+            let powerUpDistance = Infinity;
+            
+            if (this.currentLevel === 15 && this.powerUpSystem && this.powerUpSystem.powerUps.length > 0) {
+                for (const powerUp of this.powerUpSystem.powerUps) {
+                    const distance = Math.sqrt(
+                        Math.pow(enemy.x - powerUp.x, 2) + 
+                        Math.pow(enemy.y - powerUp.y, 2)
+                    );
+                    
+                    if (distance < powerUpDistance && distance < 200) { // Seek power-ups within 200 pixels
+                        powerUpDistance = distance;
+                        powerUpTarget = { x: powerUp.x, y: powerUp.y };
+                    }
+                }
+            }
+            
             // Check if enemy is close to the player's line
             let lineTarget = null;
             let lineDistance = Infinity;
@@ -967,81 +1140,121 @@ class Game {
             // Chase behavior
             const chaseRange = 150;
             const lineChaseRange = 100;
+            const powerUpChaseRange = 200; // Level 15: Enemies seek power-ups
             
-            // Calculate enemy speed (with turtle effect for Level 11 and 13)
+            // Calculate enemy speed (with turtle effect for Level 11, 13, and 15)
             let enemySpeed = enemy.speed;
-            if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
-                enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier();
+            if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem) {
+                enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier(this.enemies.indexOf(enemy));
             }
             
-            if (lineTarget && lineDistance <= lineChaseRange && !this.player.isInSafeZone) {
-                // Chase the line
-                const lineDx = lineTarget.x - enemy.x;
-                const lineDy = lineTarget.y - enemy.y;
-                const lineDist = Math.sqrt(lineDx * lineDx + lineDy * lineDy);
-                
-                if (lineDist > 0) {
-                    const newX = enemy.x + (lineDx / lineDist) * enemySpeed;
-                    const newY = enemy.y + (lineDy / lineDist) * enemySpeed;
-                    
-                    const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
-                    
-                    if (canMoveToPosition && 
-                        newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
-                        newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
-                        enemy.x = newX;
-                        enemy.y = newY;
-                    } else {
-                        enemy.wanderAngle = Math.random() * Math.PI * 2;
-                    }
-                }
-            } else if (distance <= chaseRange && !this.player.isInSafeZone) {
-                // Chase the player
-                if (distance > 0) {
-                    const newX = enemy.x + (dx / distance) * enemySpeed;
-                    const newY = enemy.y + (dy / distance) * enemySpeed;
-                    
-                    const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
-                    
-                    if (canMoveToPosition && 
-                        newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
-                        newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
-                        enemy.x = newX;
-                        enemy.y = newY;
-                    } else {
-                        enemy.wanderAngle = Math.random() * Math.PI * 2;
-                    }
-                }
-            } else {
-                // Wander randomly
-                if (!enemy.wanderAngle) {
-                    enemy.wanderAngle = Math.random() * Math.PI * 2;
-                }
-                
-                if (Math.random() < 0.02) {
-                    enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
-                }
-                
-                // Calculate enemy speed (with turtle effect for Level 11 and 13)
-                let enemySpeed = enemy.speed * 0.5;
-                if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
-                    enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier();
-                }
-                
-                const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemySpeed;
-                const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemySpeed;
-                
-                const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
-                
-                if (canMoveToPosition && 
-                    newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
-                    newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
-                    enemy.x = newX;
-                    enemy.y = newY;
-                } else {
-                    enemy.wanderAngle = Math.random() * Math.PI * 2;
-                }
-            }
+                         if (powerUpTarget && powerUpDistance <= powerUpChaseRange && this.currentLevel === 15) {
+                 // Level 15: Chase power-ups
+                 const powerUpDx = powerUpTarget.x - enemy.x;
+                 const powerUpDy = powerUpTarget.y - enemy.y;
+                 const powerUpDist = Math.sqrt(powerUpDx * powerUpDx + powerUpDy * powerUpDy);
+                 
+                 if (powerUpDist > 0) {
+                     const newX = enemy.x + (powerUpDx / powerUpDist) * enemySpeed;
+                     const newY = enemy.y + (powerUpDy / powerUpDist) * enemySpeed;
+                     
+                     const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                     
+                     if (canMoveToPosition && 
+                         newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
+                         newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
+                         enemy.x = newX;
+                         enemy.y = newY;
+                     } else {
+                         // Level 15: Force movement even if blocked
+                         enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
+                         enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
+                         enemy.wanderAngle = Math.random() * Math.PI * 2;
+                     }
+                 }
+                         } else if (lineTarget && lineDistance <= lineChaseRange && !this.player.isInSafeZone) {
+                 // Chase the line
+                 const lineDx = lineTarget.x - enemy.x;
+                 const lineDy = lineTarget.y - enemy.y;
+                 const lineDist = Math.sqrt(lineDx * lineDx + lineDy * lineDy);
+                 
+                 if (lineDist > 0) {
+                     const newX = enemy.x + (lineDx / lineDist) * enemySpeed;
+                     const newY = enemy.y + (lineDy / lineDist) * enemySpeed;
+                     
+                     const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                     
+                     if (canMoveToPosition && 
+                         newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
+                         newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
+                         enemy.x = newX;
+                         enemy.y = newY;
+                     } else {
+                         // Level 15: Force movement even if blocked
+                         if (this.currentLevel === 15) {
+                             enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
+                             enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
+                         }
+                         enemy.wanderAngle = Math.random() * Math.PI * 2;
+                     }
+                 }
+                         } else if (distance <= chaseRange && !this.player.isInSafeZone) {
+                 // Chase the player
+                 if (distance > 0) {
+                     const newX = enemy.x + (dx / distance) * enemySpeed;
+                     const newY = enemy.y + (dy / distance) * enemySpeed;
+                     
+                     const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                     
+                     if (canMoveToPosition && 
+                         newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
+                         newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
+                         enemy.x = newX;
+                         enemy.y = newY;
+                     } else {
+                         // Level 15: Force movement even if blocked
+                         if (this.currentLevel === 15) {
+                             enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
+                             enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
+                         }
+                         enemy.wanderAngle = Math.random() * Math.PI * 2;
+                     }
+                 }
+                         } else {
+                 // Wander randomly
+                 if (!enemy.wanderAngle) {
+                     enemy.wanderAngle = Math.random() * Math.PI * 2;
+                 }
+                 
+                 if (Math.random() < 0.02) {
+                     enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
+                 }
+                 
+                 // Calculate enemy speed (with turtle effect for Level 11 and 13)
+                 let enemySpeed = enemy.speed * 0.5;
+                 if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
+                     enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier();
+                 }
+                 
+                 const newX = enemy.x + Math.cos(enemy.wanderAngle) * enemySpeed;
+                 const newY = enemy.y + Math.sin(enemy.wanderAngle) * enemySpeed;
+                 
+                 const canMoveToPosition = !this.isPositionInSafeZone(newX, newY);
+                 
+                 if (canMoveToPosition && 
+                     newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
+                     newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
+                     enemy.x = newX;
+                     enemy.y = newY;
+                 } else {
+                     // Level 15: Force movement even if blocked
+                     if (this.currentLevel === 15) {
+                         enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
+                         enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
+                     }
+                     enemy.wanderAngle = Math.random() * Math.PI * 2;
+                 }
+             }
             
             // Keep enemies in bounds (fallback)
             if (enemy.x < enemy.radius) {
@@ -1059,6 +1272,160 @@ class Game {
                 enemy.y = this.canvas.height - enemy.radius;
                 enemy.wanderAngle = Math.random() * Math.PI * 2;
             }
+        }
+    }
+    
+    updateLevel16Enemy(enemy) {
+        // Initialize enemy direction if not set
+        if (!enemy.currentDirection) {
+            enemy.currentDirection = this.getRandomCardinalDirection();
+        }
+        
+        // Check if ghosts are vulnerable (running away from player)
+        const isVulnerable = this.powerUpSystem && this.powerUpSystem.areGhostsVulnerable();
+        
+        // Calculate distance to player
+        const dx = this.player.x - enemy.x;
+        const dy = this.player.y - enemy.y;
+        const distanceToPlayer = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check if enemy is near player's line
+        let nearPlayerLine = false;
+        if (this.player.isDrawing && this.player.line.length > 1) {
+            for (let i = 1; i < this.player.line.length; i++) {
+                const lineStart = this.player.line[i - 1];
+                const lineEnd = this.player.line[i];
+                const distanceToLine = Math.sqrt(
+                    Math.pow(enemy.x - lineEnd.x, 2) + 
+                    Math.pow(enemy.y - lineEnd.y, 2)
+                );
+                if (distanceToLine < 50) { // Within 50 pixels of player's line
+                    nearPlayerLine = true;
+                    break;
+                }
+            }
+        }
+        
+        // Determine new direction based on behavior
+        let newDirection = enemy.currentDirection;
+        
+        if (isVulnerable) {
+            // When vulnerable, keep current direction (don't change direction to run away)
+            // The enemy will continue moving in their current cardinal direction
+        } else if (nearPlayerLine && distanceToPlayer < 100) {
+            // When near player's line and close to player, prioritize following the line
+            newDirection = this.getDirectionTowardsPlayerLine(enemy, this.player);
+        } else if (Math.random() < 0.02) {
+            // Randomly change direction occasionally
+            newDirection = this.getRandomCardinalDirection();
+        }
+        
+        // Update enemy direction
+        enemy.currentDirection = newDirection;
+        
+        // Move enemy in the current direction
+        const speed = enemy.speed;
+        let newX = enemy.x;
+        let newY = enemy.y;
+        
+        switch (enemy.currentDirection) {
+            case 'up':
+                newY -= speed;
+                break;
+            case 'down':
+                newY += speed;
+                break;
+            case 'left':
+                newX -= speed;
+                break;
+            case 'right':
+                newX += speed;
+                break;
+        }
+        
+        // Check bounds and safe zones before updating position
+        if (newX >= enemy.radius && newX <= this.canvas.width - enemy.radius &&
+            newY >= enemy.radius && newY <= this.canvas.height - enemy.radius) {
+            
+            // Check if the new position would be in a safe zone
+            let wouldBeInSafeZone = false;
+            for (const zone of this.safeZones) {
+                if (zone.type === 'polygon') {
+                    if (isPointInPolygon(newX, newY, zone.points)) {
+                        wouldBeInSafeZone = true;
+                        break;
+                    }
+                } else {
+                    // Rectangle zone
+                    if (newX >= zone.x && newX <= zone.x + zone.width &&
+                        newY >= zone.y && newY <= zone.y + zone.height) {
+                        wouldBeInSafeZone = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!wouldBeInSafeZone) {
+                enemy.x = newX;
+                enemy.y = newY;
+            } else {
+                // If would enter safe zone, change direction
+                enemy.currentDirection = this.getRandomCardinalDirection();
+            }
+        } else {
+            // If would go out of bounds, change direction
+            enemy.currentDirection = this.getRandomCardinalDirection();
+        }
+    }
+    
+    getRandomCardinalDirection() {
+        const directions = ['up', 'down', 'left', 'right'];
+        return directions[Math.floor(Math.random() * directions.length)];
+    }
+    
+    getDirectionAwayFromPlayer(enemy, player) {
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        
+        // Determine which direction to move away
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'left' : 'right';
+        } else {
+            return dy > 0 ? 'up' : 'down';
+        }
+    }
+    
+    getDirectionTowardsPlayerLine(enemy, player) {
+        if (!player.isDrawing || player.line.length < 2) {
+            return this.getRandomCardinalDirection();
+        }
+        
+        // Find the closest point on the player's line
+        let closestPoint = player.line[player.line.length - 1];
+        let closestDistance = Math.sqrt(
+            Math.pow(enemy.x - closestPoint.x, 2) + 
+            Math.pow(enemy.y - closestPoint.y, 2)
+        );
+        
+        for (const point of player.line) {
+            const distance = Math.sqrt(
+                Math.pow(enemy.x - point.x, 2) + 
+                Math.pow(enemy.y - point.y, 2)
+            );
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestPoint = point;
+            }
+        }
+        
+        // Move towards the closest point on the line
+        const dx = closestPoint.x - enemy.x;
+        const dy = closestPoint.y - enemy.y;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'right' : 'left';
+        } else {
+            return dy > 0 ? 'down' : 'up';
         }
     }
     
@@ -1172,6 +1539,30 @@ class Game {
                     // Completion is handled in checkCollisions when all enemies are eaten
                     break;
                     
+                case 14:
+                    // Level 14: Complete when board is 85% filled OR all enemies converted to apples
+                    if (this.calculateBoardCompletion() >= GAME_CONFIG.BOARD_COMPLETION_THRESHOLD || (this.enemies.length === 0 && this.apples.length === 0)) {
+                        this.completeLevel();
+                        return;
+                    }
+                    break;
+                    
+                case 15:
+                    // Level 15: Complete when all enemies are removed (same as Level 11)
+                    if (this.enemies.length === 0) {
+                        this.completeLevel();
+                        return;
+                    }
+                    break;
+                    
+                case 16:
+                    // Level 16: Complete when board is 85% filled AND all enemies are eaten
+                    if (this.calculateBoardCompletion() >= 85 && this.enemies.length === 0) {
+                        this.completeLevel();
+                        return;
+                    }
+                    break;
+                    
                 default:
                     // Check for level completion (85% board filled OR all enemies converted to apples)
                     if (this.calculateBoardCompletion() >= GAME_CONFIG.BOARD_COMPLETION_THRESHOLD || (this.enemies.length === 0 && this.apples.length === 0)) {
@@ -1187,8 +1578,8 @@ class Game {
             this.checkCollisions();
             this.checkTemporaryZones(); // Check for expired temporary zones
             
-            // Update power-ups for Level 11 and 13
-            if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
+            // Update power-ups for Level 11, 13, 15, and 16
+            if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
                 this.powerUpSystem.updatePowerUps();
             }
             
@@ -1471,8 +1862,8 @@ class Game {
     }
     
     checkTemporaryZones() {
-        // Check temporary zones in level 5 and 12
-        if (this.currentLevel === 5 || this.currentLevel === 12) {
+        // Check temporary zones in level 5, 12, and 14
+        if (this.currentLevel === 5 || this.currentLevel === 12 || this.currentLevel === 14) {
             const currentTime = Date.now();
             
             // Remove expired temporary zones
@@ -1496,8 +1887,8 @@ class Game {
             }
         }
         
-        // Check shrinking safe zones for level 13
-        if (this.currentLevel === 13) {
+        // Check shrinking safe zones for level 13 and 14
+        if (this.currentLevel === 13 || this.currentLevel === 14) {
             this.checkShrinkingSafeZones();
         }
     }

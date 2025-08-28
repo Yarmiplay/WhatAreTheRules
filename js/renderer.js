@@ -27,9 +27,10 @@ export class Renderer {
                 }
                 this.ctx.closePath();
                 
-                // For level 5 and 12, show temporary zones with a different color
+                // For level 5, 12, and 14, show temporary zones with a different color
                 if ((currentLevel === 5 && zone.temporary && !zone.enemyKilled) || 
-                    (currentLevel === 12 && zone.temporary)) {
+                    (currentLevel === 12 && zone.temporary) ||
+                    (currentLevel === 14 && zone.temporary)) {
                     // Calculate remaining time for visual effect
                     const remainingTime = Math.max(0, zone.lifespan - (Date.now() - zone.createdAt));
                     const timeRatio = remainingTime / zone.lifespan;
@@ -47,9 +48,10 @@ export class Renderer {
                 this.ctx.stroke();
             } else {
                 // Draw rectangle safe zone
-                // For level 5 and 12, show temporary zones with a different color
+                // For level 5, 12, and 14, show temporary zones with a different color
                 if ((currentLevel === 5 && zone.temporary && !zone.enemyKilled) || 
-                    (currentLevel === 12 && zone.temporary)) {
+                    (currentLevel === 12 && zone.temporary) ||
+                    (currentLevel === 14 && zone.temporary)) {
                     // Calculate remaining time for visual effect
                     const remainingTime = Math.max(0, zone.lifespan - (Date.now() - zone.createdAt));
                     const timeRatio = remainingTime / zone.lifespan;
@@ -95,7 +97,7 @@ export class Renderer {
         }
     }
 
-    drawEnemies(enemies, currentLevel) {
+    drawEnemies(enemies, currentLevel, powerUpSystem = null) {
         for (const enemy of enemies) {
             if (currentLevel === 9 && enemy.isAI) {
                 // Level 9 AI enemies are drawn in blue like AI players
@@ -108,6 +110,25 @@ export class Renderer {
                 this.ctx.strokeStyle = '#fff';
                 this.ctx.lineWidth = 2;
                 this.ctx.stroke();
+            } else if (currentLevel === 16 && powerUpSystem) {
+                // Level 16: Draw ghosts - white when normal, blue when vulnerable
+                if (powerUpSystem.areGhostsVulnerable()) {
+                    this.ctx.fillStyle = '#0000ff'; // Blue when vulnerable
+                } else {
+                    this.ctx.fillStyle = '#ffffff'; // White when normal
+                }
+                this.ctx.beginPath();
+                this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw light border for vulnerable ghosts to make them more visible
+                if (powerUpSystem.areGhostsVulnerable()) {
+                    this.ctx.strokeStyle = '#87CEEB'; // Light sky blue border
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
             } else {
                 // Regular enemies
                 this.ctx.fillStyle = '#f00'; // Red for regular enemies
@@ -137,19 +158,35 @@ export class Renderer {
 
     drawPowerUps(powerUps) {
         for (const powerUp of powerUps) {
-            this.ctx.fillStyle = POWER_UP_COLORS[powerUp.type];
-            this.ctx.beginPath();
-            this.ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Draw power-up symbol
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '12px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            
-            const symbol = POWER_UP_SYMBOLS[powerUp.type];
-            this.ctx.fillText(symbol, powerUp.x, powerUp.y);
+            if (powerUp.type === 'mushroom') {
+                // Draw mushroom for Level 16
+                this.ctx.fillStyle = powerUp.color || '#8B4513';
+                this.ctx.beginPath();
+                this.ctx.arc(powerUp.x, powerUp.y, 10, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw mushroom symbol
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(powerUp.symbol || '🍄', powerUp.x, powerUp.y);
+            } else {
+                // Draw regular power-ups
+                this.ctx.fillStyle = POWER_UP_COLORS[powerUp.type];
+                this.ctx.beginPath();
+                this.ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw power-up symbol
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                
+                const symbol = POWER_UP_SYMBOLS[powerUp.type];
+                this.ctx.fillText(symbol, powerUp.x, powerUp.y);
+            }
         }
     }
 
@@ -260,15 +297,15 @@ export class Renderer {
         this.drawPlayerLine(gameState.player);
         
         // Draw enemies
-        this.drawEnemies(gameState.enemies, gameState.currentLevel);
+        this.drawEnemies(gameState.enemies, gameState.currentLevel, gameState.powerUpSystem);
         
         // Draw apples
         this.drawApples(gameState.apples);
         
-        // Draw power-ups (Level 11)
-                    if ((gameState.currentLevel === 11 || gameState.currentLevel === 13) && gameState.powerUpSystem) {
-                this.drawPowerUps(gameState.powerUpSystem.powerUps);
-            }
+                // Draw power-ups (Level 11, 13, 15, and 16)
+        if ((gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16) && gameState.powerUpSystem) {
+            this.drawPowerUps(gameState.powerUpSystem.powerUps);
+        }
         
         // Draw AI player for level 6 and 7
         if (gameState.currentLevel === 6 || gameState.currentLevel === 7) {
@@ -281,7 +318,7 @@ export class Renderer {
         }
         
         // Draw player
-        const isInvincible = gameState.currentLevel === 11 && gameState.powerUpSystem ? 
+        const isInvincible = (gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16) && gameState.powerUpSystem ? 
             gameState.powerUpSystem.isPlayerInvincible() : false;
         this.drawPlayer(gameState.player, gameState.currentLevel, isInvincible);
     }

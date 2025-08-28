@@ -34,7 +34,7 @@ export const GAME_CONFIG = {
 
 export const LEVEL_TITLES = {
     1: "Foundation",
-    2: "Shapes Emerge", 
+    2: "Shapes Emerge",
     3: "Territory Mastery",
     4: "Territory Fusion",
     5: "Time Pressure",
@@ -45,7 +45,10 @@ export const LEVEL_TITLES = {
     10: "100%",
     11: "Power up",
     12: "Time's up",
-    13: "Time Attack"
+    13: "Time attack",
+    14: "Wombo Combo",
+    15: "Advantage",
+    16: "Pacman"
 };
 
 export const POWER_UP_TYPES = {

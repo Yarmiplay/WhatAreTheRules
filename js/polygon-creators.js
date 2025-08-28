@@ -1,27 +1,345 @@
 // Level-specific polygon creation logic
 import { createConvexHull, calculatePolygonBounds } from './utils.js';
 
-export function createPolygonFromLine(points, currentLevel, player, safeZones) {
-    // Create a polygon that connects the line to the nearest safe zone
-    const polygon = [...points];
+export function createLevel16Polygon(points, player, safeZones) {
+    if (points.length < 3) return null;
     
+    // Create a new safe zone that follows the user's drawn line exactly
+    const newPolygon = [...points];
+    
+    // Check if there's a gap between start and end points
+    const startPoint = points[0];
+    const endPoint = points[points.length - 1];
+    
+    // Check if there's a gap between start and end points
+    const distance = Math.sqrt(
+        Math.pow(startPoint.x - endPoint.x, 2) + 
+        Math.pow(startPoint.y - endPoint.y, 2)
+    );
+    
+    if (distance > 5) { // If there's a significant gap
+        // Fill the gap with cardinal-direction lines back to the start point
+        const gapFillPoints = createCardinalPathToStart(endPoint, startPoint, points, safeZones);
+        newPolygon.push(...gapFillPoints);
+    }
+    
+    return newPolygon;
+}
+
+function createCardinalPathToStart(fromPoint, toPoint, playerPath, safeZones) {
+    const path = [];
+    
+    // First, try to find a direct cardinal path that doesn't intersect with player's line
+    const directPath = findDirectCardinalPath(fromPoint, toPoint, playerPath);
+    if (directPath) {
+        return directPath;
+    }
+    
+    // If direct path fails, navigate along safe zone edges
+    return navigateAlongSafeZoneEdges(fromPoint, toPoint, playerPath, safeZones);
+}
+
+function findDirectCardinalPath(fromPoint, toPoint, playerPath) {
+    const dx = toPoint.x - fromPoint.x;
+    const dy = toPoint.y - fromPoint.y;
+    
+    // Try horizontal first, then vertical
+    if (Math.abs(dx) > Math.abs(dy)) {
+        const horizontalPoint = { x: toPoint.x, y: fromPoint.y };
+        if (!pathIntersectsPlayerPath(fromPoint, horizontalPoint, playerPath)) {
+            return [horizontalPoint, toPoint];
+        }
+    }
+    
+    // Try vertical first, then horizontal
+    const verticalPoint = { x: fromPoint.x, y: toPoint.y };
+    if (!pathIntersectsPlayerPath(fromPoint, verticalPoint, playerPath)) {
+        return [verticalPoint, toPoint];
+    }
+    
+    return null;
+}
+
+function navigateAlongSafeZoneEdges(fromPoint, toPoint, playerPath, safeZones) {
+    const path = [];
+    
+    // Find the closest safe zone edge to navigate along
+    let bestEdge = null;
+    let bestDistance = Infinity;
+    
+    for (const zone of safeZones) {
+        const edges = getZoneEdges(zone);
+        
+        for (const edge of edges) {
+            // Check if this edge is in a cardinal direction
+            const edgeDx = edge.end.x - edge.start.x;
+            const edgeDy = edge.end.y - edge.start.y;
+            
+            if (Math.abs(edgeDx) > 0.1 && Math.abs(edgeDy) < 0.1) {
+                // Horizontal edge
+                const distance = Math.abs(fromPoint.y - edge.start.y);
+                if (distance < bestDistance && !pathIntersectsPlayerPath(fromPoint, edge.start, playerPath)) {
+                    bestDistance = distance;
+                    bestEdge = edge;
+                }
+            } else if (Math.abs(edgeDy) > 0.1 && Math.abs(edgeDx) < 0.1) {
+                // Vertical edge
+                const distance = Math.abs(fromPoint.x - edge.start.x);
+                if (distance < bestDistance && !pathIntersectsPlayerPath(fromPoint, edge.start, playerPath)) {
+                    bestDistance = distance;
+                    bestEdge = edge;
+                }
+            }
+        }
+    }
+    
+    if (bestEdge) {
+        // Navigate to the edge first
+        path.push(bestEdge.start);
+        
+        // Walk along the edge towards the target
+        const edgePoints = walkAlongEdge(bestEdge, toPoint, playerPath);
+        path.push(...edgePoints);
+        
+        // Connect to the target
+        if (path.length > 0) {
+            const lastPoint = path[path.length - 1];
+            if (!pathIntersectsPlayerPath(lastPoint, toPoint, playerPath)) {
+                path.push(toPoint);
+            }
+        }
+        
+        return path;
+    }
+    
+    // Fallback: simple detour
+    return createSimpleDetour(fromPoint, toPoint, playerPath);
+}
+
+function getZoneEdges(zone) {
+    const edges = [];
+    
+    if (zone.type === 'polygon') {
+        for (let i = 0; i < zone.points.length; i++) {
+            const start = zone.points[i];
+            const end = zone.points[(i + 1) % zone.points.length];
+            edges.push({ start, end });
+        }
+    } else {
+        // Rectangle zone
+        const points = [
+            { x: zone.x, y: zone.y },
+            { x: zone.x + zone.width, y: zone.y },
+            { x: zone.x + zone.width, y: zone.y + zone.height },
+            { x: zone.x, y: zone.y + zone.height }
+        ];
+        
+        for (let i = 0; i < points.length; i++) {
+            const start = points[i];
+            const end = points[(i + 1) % points.length];
+            edges.push({ start, end });
+        }
+    }
+    
+    return edges;
+}
+
+function walkAlongEdge(edge, target, playerPath) {
+    const path = [];
+    const step = 10; // Step size for walking along edge
+    
+    let currentPoint = { ...edge.start };
+    const edgeDx = edge.end.x - edge.start.x;
+    const edgeDy = edge.end.y - edge.start.y;
+    
+    // Determine step direction
+    const stepX = edgeDx > 0 ? step : edgeDx < 0 ? -step : 0;
+    const stepY = edgeDy > 0 ? step : edgeDy < 0 ? -step : 0;
+    
+    // Walk along the edge until we reach the end or get close to target
+    while (Math.abs(currentPoint.x - edge.end.x) > step && Math.abs(currentPoint.y - edge.end.y) > step) {
+        const nextPoint = { x: currentPoint.x + stepX, y: currentPoint.y + stepY };
+        
+        // Check if we can continue along the edge
+        if (!pathIntersectsPlayerPath(currentPoint, nextPoint, playerPath)) {
+            path.push(nextPoint);
+            currentPoint = nextPoint;
+        } else {
+            break;
+        }
+    }
+    
+    return path;
+}
+
+function createSimpleDetour(fromPoint, toPoint, playerPath) {
+    // Create a simple detour that goes around the player's path
+    const margin = 40;
+    
+    // Try going up and around
+    const upPoint = { x: fromPoint.x, y: fromPoint.y - margin };
+    const acrossPoint = { x: toPoint.x, y: fromPoint.y - margin };
+    
+    if (!pathIntersectsPlayerPath(fromPoint, upPoint, playerPath) &&
+        !pathIntersectsPlayerPath(upPoint, acrossPoint, playerPath) &&
+        !pathIntersectsPlayerPath(acrossPoint, toPoint, playerPath)) {
+        return [upPoint, acrossPoint, toPoint];
+    }
+    
+    // Try going down and around
+    const downPoint = { x: fromPoint.x, y: fromPoint.y + margin };
+    const acrossPoint2 = { x: toPoint.x, y: fromPoint.y + margin };
+    
+    if (!pathIntersectsPlayerPath(fromPoint, downPoint, playerPath) &&
+        !pathIntersectsPlayerPath(downPoint, acrossPoint2, playerPath) &&
+        !pathIntersectsPlayerPath(acrossPoint2, toPoint, playerPath)) {
+        return [downPoint, acrossPoint2, toPoint];
+    }
+    
+    // Fallback: just go directly
+    return [toPoint];
+}
+
+function pathIntersectsPlayerPath(fromPoint, toPoint, playerPath) {
+    // Check if the line from fromPoint to toPoint intersects with any segment of the player's path
+    for (let i = 1; i < playerPath.length; i++) {
+        const playerStart = playerPath[i - 1];
+        const playerEnd = playerPath[i];
+        
+        if (linesIntersect(fromPoint, toPoint, playerStart, playerEnd)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+function linesIntersect(p1, p2, p3, p4) {
+    // Check if line segment p1-p2 intersects with line segment p3-p4
+    const x1 = p1.x, y1 = p1.y;
+    const x2 = p2.x, y2 = p2.y;
+    const x3 = p3.x, y3 = p3.y;
+    const x4 = p4.x, y4 = p4.y;
+    
+    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(denom) < 0.001) return false; // Lines are parallel
+    
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+    
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+
+
+
+
+
+
+
+
+function findIntersections(drawnPolygon, existingPolygon) {
+    const intersections = [];
+    
+    // Check each edge of the drawn polygon against each edge of the existing polygon
+    for (let i = 0; i < drawnPolygon.length - 1; i++) {
+        const drawnStart = drawnPolygon[i];
+        const drawnEnd = drawnPolygon[i + 1];
+        
+        for (let j = 0; j < existingPolygon.length; j++) {
+            const existingStart = existingPolygon[j];
+            const existingEnd = existingPolygon[(j + 1) % existingPolygon.length];
+            
+            const intersection = getLineIntersection(drawnStart, drawnEnd, existingStart, existingEnd);
+            if (intersection) {
+                intersections.push({
+                    point: intersection,
+                    drawnIndex: i,
+                    existingIndex: j
+                });
+            }
+        }
+    }
+    
+    // Sort intersections by their position along the drawn polygon
+    intersections.sort((a, b) => a.drawnIndex - b.drawnIndex);
+    
+    return intersections;
+}
+
+function getLineIntersection(p1, p2, p3, p4) {
+    const x1 = p1.x, y1 = p1.y;
+    const x2 = p2.x, y2 = p2.y;
+    const x3 = p3.x, y3 = p3.y;
+    const x4 = p4.x, y4 = p4.y;
+    
+    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(denom) < 0.001) return null; // Lines are parallel
+    
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+    
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        return {
+            x: x1 + t * (x2 - x1),
+            y: y1 + t * (y2 - y1)
+        };
+    }
+    
+    return null;
+}
+
+function getPolygonPointsBetween(startPoint, endPoint, polygon) {
+    const points = [];
+    
+    // Find the indices of start and end points
+    let startIndex = -1;
+    let endIndex = -1;
+    
+    for (let i = 0; i < polygon.length; i++) {
+        if (Math.abs(polygon[i].x - startPoint.x) < 0.1 && Math.abs(polygon[i].y - startPoint.y) < 0.1) {
+            startIndex = i;
+        }
+        if (Math.abs(polygon[i].x - endPoint.x) < 0.1 && Math.abs(polygon[i].y - endPoint.y) < 0.1) {
+            endIndex = i;
+        }
+    }
+    
+    if (startIndex === -1 || endIndex === -1) {
+        return [];
+    }
+    
+    // Add points from start to end (clockwise)
+    let currentIndex = startIndex;
+    while (currentIndex !== endIndex) {
+        currentIndex = (currentIndex + 1) % polygon.length;
+        points.push(polygon[currentIndex]);
+    }
+    
+    return points;
+}
+
+
+
+export function createPolygonFromLine(points, currentLevel, player, safeZones) {
+    const polygon = [...points];
+
     if (currentLevel === 3) {
-        // For level 3, create a comprehensive polygon that fills trapped areas between safe zones
         return createLevel3Polygon(points, player, safeZones);
-    } else if (currentLevel === 4) {
-        // For level 4, mixed-up filling rules!
+    } else if (currentLevel === 4 || currentLevel === 14) {
         return createLevel4Polygon(points, player, safeZones);
-    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13) {
-        // Level 8, 9, 10, 11, 12, and 13: Create polygon that matches exact drawn shape + ALL existing areas
-        if (currentLevel === 11 || currentLevel === 13) {
+    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16) {
+        if (currentLevel === 11 || currentLevel === 13 || currentLevel === 15) {
             return createLevel11Polygon(points, player, safeZones);
         } else if (currentLevel === 12) {
             return createLevel12Polygon(points, player, safeZones);
+        } else if (currentLevel === 16) {
+            return createLevel16Polygon(points, player, safeZones);
         } else {
             return createLevel8Polygon(points, player, safeZones);
         }
     } else {
-        // For level 2, connect to the original safe zone (existing logic)
         return createLevel2Polygon(points, safeZones);
     }
 }

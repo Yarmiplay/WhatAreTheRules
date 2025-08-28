@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    background: #000000;
     color: white;
     overflow: hidden;
     height: 100vh;
@@ -16,6 +16,7 @@ body {
     width: 100vw;
     height: 100vh;
     position: relative;
+    background: #000000;
 }
 
 .screen {
@@ -104,7 +105,7 @@ body {
 }
 
 .speedrun-button.active {
-    background: linear-gradient(45deg, #4CAF50, #45a049);
+    background: linear-gradient(45deg, #007bff, #0056b3);
 }
 
 .speedrun-button:hover {
@@ -186,6 +187,15 @@ body {
     border-color: #4CAF50;
 }
 
+.level-button.advanced {
+    background: linear-gradient(45deg, #b71c1c, #8e0000);
+    border-color: #b71c1c;
+}
+
+.level-button.advanced:hover {
+    background: linear-gradient(45deg, #8e0000, #6a0000);
+}
+
 #gameScreen {
     flex-direction: column;
     padding: 20px;
@@ -209,10 +219,10 @@ body {
 }
 
 #gameCanvas {
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 6px solid #4fc3f7;
     border-radius: 10px;
     background: #000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 20px #4fc3f7, 0 0 40px #4fc3f7, 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .game-controls {

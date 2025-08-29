@@ -110,6 +110,11 @@ class Game {
         this.inputProcessingInterval = null;
         this.inputProcessingFrequency = 60; // Process inputs 60 times per second (16.67ms intervals)
         
+        // Frame rate limiting for consistent gameplay (100fps for all levels except 20 and 21)
+        this.targetFPS = 100;
+        this.frameInterval = 1000 / this.targetFPS; // 10ms between frames
+        this.lastFrameTime = 0;
+        
         this.init();
     }
     
@@ -1973,6 +1978,18 @@ class Game {
     }
     
     gameLoop() {
+        const currentTime = performance.now();
+        
+        // Frame rate limiting for levels other than 20 and 21
+        if (this.currentLevel !== 20 && this.currentLevel !== 21) {
+            if (currentTime - this.lastFrameTime < this.frameInterval) {
+                // Not enough time has passed, schedule next frame using setTimeout for precise timing
+                setTimeout(() => this.gameLoop(), this.frameInterval - (currentTime - this.lastFrameTime));w
+                return;
+            }
+            this.lastFrameTime = currentTime;
+        }
+        
         if (this.gameState === 'playing') {
             // Update timer (counting up)
             if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
@@ -2110,7 +2127,13 @@ class Game {
             });
             
             this.updateDisplay();
-            requestAnimationFrame(() => this.gameLoop());
+            
+            // Use setTimeout for precise timing on levels 1-19, requestAnimationFrame for levels 20-21
+            if (this.currentLevel !== 20 && this.currentLevel !== 21) {
+                setTimeout(() => this.gameLoop(), this.frameInterval);
+            } else {
+                requestAnimationFrame(() => this.gameLoop());
+            }
         }
     }
     

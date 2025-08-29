@@ -274,9 +274,12 @@ class Game {
         this.gameState = 'playing';
         this.showScreen('gameScreen');
         
-        // Start level timer for speedrun mode
-        if (this.speedrunMode) {
-            this.levelStartTime = Date.now();
+        // Reset level timer for all modes
+        this.levelStartTime = Date.now();
+        
+        // Reset Level 20 specific properties
+        if (this.currentLevel === 20) {
+            this.hasMoved = false;
         }
         
         this.initializeLevel();
@@ -1629,9 +1632,14 @@ class Game {
         
         // Update timer display
         let totalMilliseconds;
-        if (this.currentLevel === 20 && this.hasMoved) {
-            // Level 20: Timer starts on first move
-            totalMilliseconds = Date.now() - this.levelStartTime;
+        if (this.currentLevel === 20) {
+            if (this.hasMoved) {
+                // Level 20: Timer starts on first move
+                totalMilliseconds = Date.now() - this.levelStartTime;
+            } else {
+                // Level 20: Timer shows 0:00.00 until first move
+                totalMilliseconds = 0;
+            }
         } else {
             // Other levels: Timer starts when level starts
             totalMilliseconds = Date.now() - this.levelStartTime;
@@ -2471,14 +2479,18 @@ class Game {
         this.showScreen('gameScreen');
         this.score = 0; // Reset score when restarting
         
-        // Reset timer for Level 20
+        // Reset timer for current level (but not global speedrun timer)
         if (this.currentLevel === 20) {
             this.hasMoved = false;
+            this.levelStartTime = Date.now();
+        } else {
+            // For other levels, reset the level start time
             this.levelStartTime = Date.now();
         }
         
         this.initializeLevel();
-        this.gameLoop();
+        // Don't call gameLoop() here - it's already running from the previous level
+        // The existing game loop will continue with the reset state
     }
     
     gameOver() {

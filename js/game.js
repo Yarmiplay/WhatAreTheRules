@@ -734,78 +734,102 @@ class Game {
         }
     }
     
-    closeArea() {
-        // Create a new safe zone from the drawn line
-        const points = [...this.player.line];
-        if (points.length > 2) {
-            if (this.currentLevel === 2 || this.currentLevel === 3 || this.currentLevel === 4 || 
-                this.currentLevel === 5 || this.currentLevel === 8 || this.currentLevel === 9 || 
-                this.currentLevel === 10 || this.currentLevel === 11 || this.currentLevel === 12 || 
-                this.currentLevel === 13 || this.currentLevel === 14 ||                 this.currentLevel === 15 || 
-                this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
-                // For polygon levels, create a proper polygon area
-                const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
-                const newSafeZone = {
-                    type: 'polygon',
-                    points: polygon,
-                    bounds: calculatePolygonBounds(polygon)
-                };
-                
-                // For level 5 and 14, make safe zones temporary (8 seconds) unless an enemy was killed
-                if (this.currentLevel === 5 || this.currentLevel === 14) {
-                    newSafeZone.temporary = true;
-                    newSafeZone.createdAt = Date.now();
-                    newSafeZone.lifespan = 8000; // 8 seconds
-                    newSafeZone.enemyKilled = false; // Track if enemy was killed in this zone
-                }
-                
-                // For level 12, the merged polygon will be marked as temporary after merging
-                // (The timer is set in the mergeSafeZones function for Level 12)
-                
-                // Level 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17: Merge with existing safe zones
-                if (this.currentLevel === 4 || this.currentLevel === 7 || this.currentLevel === 8 || 
-                                    this.currentLevel === 9 || this.currentLevel === 10 || this.currentLevel === 11 || 
-                this.currentLevel === 12 || this.currentLevel === 13 || this.currentLevel === 14 || 
-                this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
-                    this.safeZones = mergeSafeZones(newSafeZone, this.currentLevel, this.safeZones, this.enemies, this.apples);
-                } else {
-                    this.safeZones.push(newSafeZone);
-                }
-                
-                // Check for enemies trapped inside the polygon
-                for (let i = this.enemies.length - 1; i >= 0; i--) {
-                    const enemy = this.enemies[i];
-                    if (isPointInPolygon(enemy.x, enemy.y, polygon)) {
-                        // Convert enemy to apple for all levels
-                        const points = this.currentLevel === 9 ? GAME_CONFIG.LEVEL_9_APPLE_POINTS : GAME_CONFIG.REGULAR_APPLE_POINTS;
-                        this.apples.push({
-                            x: enemy.x,
-                            y: enemy.y,
-                            radius: GAME_CONFIG.APPLE_RADIUS,
-                            points: points
-                        });
-                        this.enemies.splice(i, 1);
-                        
-                        // Level 11, 13, and 15: Check if all enemies are gone
-                        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.enemies.length === 0) {
-                            console.log(`Level ${this.currentLevel}: All enemies removed! Completing level...`);
-                            this.completeLevel();
-                            return;
-                        }
-                        
-                        // For level 5, mark the zone as permanent if an enemy was killed
-                        if (this.currentLevel === 5 && newSafeZone.temporary) {
-                            newSafeZone.enemyKilled = true;
-                            newSafeZone.temporary = false;
-                        }
-                        // For level 14, zones remain temporary even after killing enemies (they still shrink)
-                    }
-                }
-                
-                // Add score for capturing area
-                const area = calculatePolygonArea(polygon);
-                const areaScore = this.currentLevel === 9 ? Math.floor(area / 50) : Math.floor(area / 100);
-                this.score += areaScore;
+         closeArea() {
+         // Create a new safe zone from the drawn line
+         const points = [...this.player.line];
+         if (points.length > 2) {
+             // Level 9: Special case - don't create new areas, just convert enemies to apples and add score
+             if (this.currentLevel === 9) {
+                 // Create a temporary polygon to check for enemies and calculate area
+                 const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
+                 
+                 // Check for enemies trapped inside the polygon
+                 for (let i = this.enemies.length - 1; i >= 0; i--) {
+                     const enemy = this.enemies[i];
+                     if (isPointInPolygon(enemy.x, enemy.y, polygon)) {
+                         // Convert enemy to apple
+                         this.apples.push({
+                             x: enemy.x,
+                             y: enemy.y,
+                             radius: GAME_CONFIG.APPLE_RADIUS,
+                             points: GAME_CONFIG.LEVEL_9_APPLE_POINTS
+                         });
+                         this.enemies.splice(i, 1);
+                     }
+                 }
+                 
+                 // Add score for capturing area (but don't create the actual safe zone)
+                 const area = calculatePolygonArea(polygon);
+                 const areaScore = Math.floor(area / 50);
+                 this.score += areaScore;
+             } else if (this.currentLevel === 2 || this.currentLevel === 3 || this.currentLevel === 4 || 
+                 this.currentLevel === 5 || this.currentLevel === 8 || 
+                 this.currentLevel === 10 || this.currentLevel === 11 || this.currentLevel === 12 || 
+                 this.currentLevel === 13 || this.currentLevel === 14 ||                 this.currentLevel === 15 || 
+                 this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
+                 // For polygon levels, create a proper polygon area
+                 const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
+                 const newSafeZone = {
+                     type: 'polygon',
+                     points: polygon,
+                     bounds: calculatePolygonBounds(polygon)
+                 };
+                 
+                 // For level 5 and 14, make safe zones temporary (8 seconds) unless an enemy was killed
+                 if (this.currentLevel === 5 || this.currentLevel === 14) {
+                     newSafeZone.temporary = true;
+                     newSafeZone.createdAt = Date.now();
+                     newSafeZone.lifespan = 8000; // 8 seconds
+                     newSafeZone.enemyKilled = false; // Track if enemy was killed in this zone
+                 }
+                 
+                 // For level 12, the merged polygon will be marked as temporary after merging
+                 // (The timer is set in the mergeSafeZones function for Level 12)
+                 
+                 // Level 4, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17: Merge with existing safe zones
+                 if (this.currentLevel === 4 || this.currentLevel === 7 || this.currentLevel === 8 || 
+                                     this.currentLevel === 10 || this.currentLevel === 11 || 
+                 this.currentLevel === 12 || this.currentLevel === 13 || this.currentLevel === 14 || 
+                 this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
+                     this.safeZones = mergeSafeZones(newSafeZone, this.currentLevel, this.safeZones, this.enemies, this.apples);
+                 } else {
+                     this.safeZones.push(newSafeZone);
+                 }
+                 
+                 // Check for enemies trapped inside the polygon
+                 for (let i = this.enemies.length - 1; i >= 0; i--) {
+                     const enemy = this.enemies[i];
+                     if (isPointInPolygon(enemy.x, enemy.y, polygon)) {
+                         // Convert enemy to apple for all levels
+                         const points = this.currentLevel === 9 ? GAME_CONFIG.LEVEL_9_APPLE_POINTS : GAME_CONFIG.REGULAR_APPLE_POINTS;
+                         this.apples.push({
+                             x: enemy.x,
+                             y: enemy.y,
+                             radius: GAME_CONFIG.APPLE_RADIUS,
+                             points: points
+                         });
+                         this.enemies.splice(i, 1);
+                         
+                         // Level 11, 13, and 15: Check if all enemies are gone
+                         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.enemies.length === 0) {
+                             console.log(`Level ${this.currentLevel}: All enemies removed! Completing level...`);
+                             this.completeLevel();
+                             return;
+                         }
+                         
+                         // For level 5, mark the zone as permanent if an enemy was killed
+                         if (this.currentLevel === 5 && newSafeZone.temporary) {
+                             newSafeZone.enemyKilled = true;
+                             newSafeZone.temporary = false;
+                         }
+                         // For level 14, zones remain temporary even after killing enemies (they still shrink)
+                     }
+                 }
+                 
+                 // Add score for capturing area
+                 const area = calculatePolygonArea(polygon);
+                 const areaScore = this.currentLevel === 9 ? Math.floor(area / 50) : Math.floor(area / 100);
+                 this.score += areaScore;
             } else {
                 // For other levels, use rectangle areas
                 let minX = Math.min(...points.map(p => p.x));
@@ -2475,7 +2499,14 @@ class Game {
     }
     
     restartLevel() {
+        
+        if (this.gameState != 'playing') {
+            this.gameState = 'playing';
+            this.gameLoop();
+        }
+
         this.gameState = 'playing';
+
         this.showScreen('gameScreen');
         this.score = 0; // Reset score when restarting
         
@@ -2491,6 +2522,7 @@ class Game {
         this.initializeLevel();
         // Don't call gameLoop() here - it's already running from the previous level
         // The existing game loop will continue with the reset state
+        
     }
     
     gameOver() {
@@ -2500,14 +2532,6 @@ class Game {
     }
     
     playerWins() {
-        this.gameState = 'completed';
-        document.getElementById('levelCompleteTitle').textContent = 'You caught the AI!';
-        document.getElementById('levelCompleteScore').textContent = `Score: ${this.score}`;
-        
-        // Format time with milliseconds for completion screen
-        const totalMilliseconds = Date.now() - this.startTime;
-        document.getElementById('levelCompleteTime').textContent = `Time: ${formatTime(totalMilliseconds)}`;
-        
         this.completedLevels.add(this.currentLevel);
         if (this.currentLevel === this.unlockedLevels) {
             this.unlockedLevels++;
@@ -2517,7 +2541,63 @@ class Game {
         localStorage.setItem('unlockedLevels', this.unlockedLevels.toString());
         localStorage.setItem('completedLevels', JSON.stringify(Array.from(this.completedLevels)));
         
+        // Calculate level time for speedrun mode
+        if (this.speedrunMode) {
+            let levelTime;
+            if (this.currentLevel === 20 && this.hasMoved) {
+                // Level 20: Timer starts on first move
+                levelTime = Date.now() - this.levelStartTime;
+            } else {
+                // Other levels: Timer starts when level starts
+                levelTime = Date.now() - this.levelStartTime;
+            }
+            this.levelTimes.push({
+                level: this.currentLevel,
+                time: levelTime
+            });
+            this.totalSpeedrunTime += levelTime;
+        }
+        
+        // Show level completion screen
+        this.gameState = 'completed';
+        document.getElementById('levelCompleteTitle').textContent = 'You caught the AI!';
+        document.getElementById('levelCompleteScore').textContent = `Score: ${this.score}`;
+        
+        // Format time with milliseconds for completion screen
+        let totalMilliseconds;
+        if (this.currentLevel === 20 && this.hasMoved) {
+            // Level 20: Timer starts on first move
+            totalMilliseconds = Date.now() - this.levelStartTime;
+        } else {
+            // Other levels: Timer starts when level starts
+            totalMilliseconds = Date.now() - this.levelStartTime;
+        }
+        document.getElementById('levelCompleteTime').textContent = `Time: ${formatTime(totalMilliseconds)}`;
+        
+        // Show speedrun info if in speedrun mode
+        if (this.speedrunMode) {
+            const levelTime = this.levelTimes[this.levelTimes.length - 1].time;
+            const levelMinutes = Math.floor(levelTime / 60000);
+            const levelSeconds = Math.floor((levelTime % 60000) / 1000);
+            const levelMilliseconds = Math.floor((levelTime % 1000) / 10);
+            
+            const totalMinutes = Math.floor(this.totalSpeedrunTime / 60000);
+            const totalSeconds = Math.floor((this.totalSpeedrunTime % 60000) / 1000);
+            const totalMilliseconds = Math.floor((this.totalSpeedrunTime % 1000) / 10);
+            
+            document.getElementById('levelCompleteTime').textContent = 
+                `Level Time: ${levelMinutes}:${levelSeconds.toString().padStart(2, '0')}.${levelMilliseconds.toString().padStart(2, '0')} | ` +
+                `Total: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}.${totalMilliseconds.toString().padStart(2, '0')}`;
+        }
+        
         this.showScreen('levelCompleteScreen');
+        
+        // Auto-start next level in speedrun mode
+        if (this.speedrunMode && this.currentLevel < 20) {
+            setTimeout(() => {
+                this.startLevel(this.currentLevel + 1);
+            }, 2000); // 2 second delay to show completion screen
+        }
     }
     
     aiWins() {
@@ -2583,13 +2663,13 @@ class Game {
             
             document.getElementById('levelCompleteTime').textContent = 
                 `Level Time: ${levelMinutes}:${levelSeconds.toString().padStart(2, '0')}.${levelMilliseconds.toString().padStart(2, '0')} | ` +
-                `Total (from Level ${this.speedrunStartLevel}): ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}.${totalMilliseconds.toString().padStart(2, '0')}`;
+                `Total: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}.${totalMilliseconds.toString().padStart(2, '0')}`;
         }
         
         this.showScreen('levelCompleteScreen');
         
         // Auto-start next level in speedrun mode
-        if (this.speedrunMode && this.currentLevel < 9) {
+        if (this.speedrunMode && this.currentLevel < 20) {
             setTimeout(() => {
                 this.startLevel(this.currentLevel + 1);
             }, 2000); // 2 second delay to show completion screen

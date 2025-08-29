@@ -515,7 +515,7 @@ class Game {
                 }
             }
         }
-        
+
         // Level 11: Check if all enemies are gone
         if (this.currentLevel === 11 && this.enemies.length === 0) {
             console.log('Level 11: All enemies removed! Completing level...');
@@ -2773,7 +2773,7 @@ class Game {
             
             document.getElementById('levelCompleteTime').textContent = 
                 `Level Time: ${levelMinutes}:${levelSeconds.toString().padStart(2, '0')}.${levelMilliseconds.toString().padStart(2, '0')} | ` +
-                `Total (from Level ${this.speedrunStartLevel}): ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}.${totalMilliseconds.toString().padStart(2, '0')}`;
+                `Total: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}.${totalMilliseconds.toString().padStart(2, '0')}`;
         }
         
         this.showScreen('levelCompleteScreen');

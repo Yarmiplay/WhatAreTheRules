@@ -88,9 +88,9 @@ class Game {
         this.hasMoved = false;
         this.levelStartTime = 0;
         
-        // Level 20 and 21: Input buffer for better responsiveness
-        this.inputBuffer = [];
-        this.maxInputBufferSize = 5; // Store up to 5 inputs for better buffering
+        // Level 20 and 21: Input properties
+        this.pendingDirection = null; // Store the next direction to turn to
+        this.lastProcessedDirection = null; // Track last processed direction to prevent duplicates
         
         // Level 20 and 21: Animation properties
         this.isSnakeAnimating = false;
@@ -109,10 +109,6 @@ class Game {
         this.gracePeriodStartTime = 0;
         this.gracePeriodDuration = 100; // 100ms grace period
         this.gracePeriodKillingTile = null; // Store the tile that would kill the snake
-        
-        // Level 20 and 21: Independent input processing
-        this.inputProcessingInterval = null;
-        this.inputProcessingFrequency = 60; // Process inputs 60 times per second (16.67ms intervals)
         
         // Frame rate limiting for consistent gameplay (100fps for all levels except 20 and 21)
         this.targetFPS = 100;
@@ -188,40 +184,40 @@ class Game {
                 this.pauseGame();
             }
             
-                    // Level 20 and 21: Input buffering for better responsiveness
-        if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
-            let direction = null;
-            
-            switch (e.key) {
-                case 'w':
-                case 'ArrowUp':
-                    direction = 'up';
-                    break;
-                case 's':
-                case 'ArrowDown':
-                    direction = 'down';
-                    break;
-                case 'a':
-                case 'ArrowLeft':
-                    direction = 'left';
-                    break;
-                case 'd':
-                case 'ArrowRight':
-                    direction = 'right';
-                    break;
-            }
-            
-            if (direction) {
-                // Start timer on first move
-                if (!this.hasMoved) {
-                    this.hasMoved = true;
-                    this.levelStartTime = Date.now();
+                    // Level 20 and 21: Direct input handling
+            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
+                let direction = null;
+                
+                switch (e.key) {
+                    case 'w':
+                    case 'ArrowUp':
+                        direction = 'up';
+                        break;
+                    case 's':
+                    case 'ArrowDown':
+                        direction = 'down';
+                        break;
+                    case 'a':
+                    case 'ArrowLeft':
+                        direction = 'left';
+                        break;
+                    case 'd':
+                    case 'ArrowRight':
+                        direction = 'right';
+                        break;
                 }
                 
-                // Add to input buffer
-                this.addToInputBuffer(direction);
+                if (direction) {
+                    // Start timer on first move
+                    if (!this.hasMoved) {
+                        this.hasMoved = true;
+                        this.levelStartTime = Date.now();
+                    }
+                    
+                    // Store the direction for processing in the movement loop
+                    this.pendingDirection = direction;
+                }
             }
-        }
             
             // Start drawing with spacebar when in safe zone
             if (e.key === ' ' && this.gameState === 'playing' && this.player.isInSafeZone && !this.player.isDrawing) {
@@ -793,9 +789,6 @@ class Game {
         this.snakeAnimationStartPositions = [];
         this.snakeAnimationEndPositions = [];
         this.isSnakeAnimating = false;
-        
-        // Start independent input processing
-        this.startIndependentInputProcessing();
     }
     
     setupLevel21() {
@@ -840,9 +833,6 @@ class Game {
         this.snakeAnimationStartPositions = [];
         this.snakeAnimationEndPositions = [];
         this.isSnakeAnimating = false;
-        
-        // Start independent input processing
-        this.startIndependentInputProcessing();
     }
     
     setupRegularLevel() {
@@ -2704,6 +2694,19 @@ class Game {
         // Don't move until player has made first input
         if (!this.hasMoved) { return; }
 
+        // Process pending direction input
+        if (this.pendingDirection && this.pendingDirection !== this.lastProcessedDirection) {
+            // Check if the direction is valid (not opposite to current direction)
+            if ((this.pendingDirection === 'up' && this.snakeDirection !== 'down') ||
+                (this.pendingDirection === 'down' && this.snakeDirection !== 'up') ||
+                (this.pendingDirection === 'left' && this.snakeDirection !== 'right') ||
+                (this.pendingDirection === 'right' && this.snakeDirection !== 'left')) {
+                
+                this.nextDirection = this.pendingDirection;
+                this.lastProcessedDirection = this.pendingDirection;
+            }
+        }
+
         // Update direction
         this.snakeDirection = this.nextDirection;
         
@@ -2802,64 +2805,7 @@ class Game {
         this.lastMoveTime = currentTime;
     }
     
-    addToInputBuffer(direction) {
-        // Only add direction if it's different from the last direction in buffer
-        if (this.inputBuffer.length === 0 || this.inputBuffer[this.inputBuffer.length - 1] !== direction) {
-            this.inputBuffer.push(direction);
-            
-            // Keep buffer size limited
-            //if (this.inputBuffer.length > this.maxInputBufferSize) {
-            //    this.inputBuffer.shift();
-            //}
-            console.log(this.inputBuffer);
-        }
-    }
-    
-    processInputBuffer() {
-        // Process inputs in LIFO order (most recent first)
-        let lastValidDirection = null;
-        
-        while (this.inputBuffer.length > 0) {
-            const direction = this.inputBuffer.shift(); // FIFO is what works
-            
-            // Check if the direction is valid (not opposite to current direction)
-            if ((direction === 'up' && this.snakeDirection !== 'down') ||
-                (direction === 'down' && this.snakeDirection !== 'up') ||
-                (direction === 'left' && this.snakeDirection !== 'right') ||
-                (direction === 'right' && this.snakeDirection !== 'left')) {
-                
-                lastValidDirection = direction;
-                console.log(lastValidDirection);
-                break; // Use the first valid direction found (most recent)
-            }
-        }
-        
-        // Update next direction if we found a valid input
-        if (lastValidDirection) {
-            this.nextDirection = lastValidDirection;
-        }
-    }
-    
-    startIndependentInputProcessing() {
-        // Clear any existing interval
-        if (this.inputProcessingInterval) {
-            clearInterval(this.inputProcessingInterval);
-        }
-        
-        // Start processing inputs at high frequency
-        this.inputProcessingInterval = setInterval(() => {
-            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
-                this.processInputBuffer();
-            }
-        }, 1000 / this.inputProcessingFrequency); // Convert frequency to interval
-    }
-    
-    stopIndependentInputProcessing() {
-        if (this.inputProcessingInterval) {
-            clearInterval(this.inputProcessingInterval);
-            this.inputProcessingInterval = null;
-        }
-    }
+
     
     checkForKillingTile(x, y) {
         // Check boundary collision
@@ -2949,10 +2895,6 @@ class Game {
     }
     
     pauseGame() {
-        // Stop independent input processing for levels 20 and 21
-        if (this.currentLevel === 20 || this.currentLevel === 21) {
-            this.stopIndependentInputProcessing();
-        }
         this.gameState = 'paused';
         this.showScreen('pauseMenu');
     }
@@ -2961,9 +2903,7 @@ class Game {
         this.gameState = 'playing';
         this.showScreen('gameScreen');
         // Restart independent input processing for levels 20 and 21
-        if (this.currentLevel === 20 || this.currentLevel === 21) {
-            this.startIndependentInputProcessing();
-        }
+
         this.gameLoop();
     }
     
@@ -2983,15 +2923,14 @@ class Game {
         if (this.currentLevel === 20 || this.currentLevel === 21) {
             this.hasMoved = false;
             this.levelStartTime = Date.now();
-            // Reset input buffer for levels 20 and 21
-            this.inputBuffer = [];
+                    // Reset input properties for levels 20 and 21
+        this.pendingDirection = null;
+        this.lastProcessedDirection = null;
             // Reset grace period for levels 20 and 21
             this.gracePeriodActive = false;
             this.gracePeriodStartTime = 0;
             this.gracePeriodKillingTile = null;
-            // Restart independent input processing
-            this.stopIndependentInputProcessing();
-            this.startIndependentInputProcessing();
+
         } else {
             // For other levels, reset the level start time
             this.levelStartTime = Date.now();
@@ -3004,10 +2943,6 @@ class Game {
     }
     
     gameOver() {
-        // Stop independent input processing for levels 20 and 21
-        if (this.currentLevel === 20 || this.currentLevel === 21) {
-            this.stopIndependentInputProcessing();
-        }
         this.gameState = 'gameOver';
         document.getElementById('finalScore').textContent = `Score: ${this.score}`;
         this.showScreen('gameOverScreen');
@@ -3115,10 +3050,7 @@ class Game {
             this.totalSpeedrunTime += levelTime;
         }
         
-        // Stop independent input processing for levels 20 and 21
-        if (this.currentLevel === 20 || this.currentLevel === 21) {
-            this.stopIndependentInputProcessing();
-        }
+
         
         // Show level completion screen
         this.gameState = 'completed';

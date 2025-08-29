@@ -98,6 +98,10 @@ class Game {
         this.snakeAnimationStartTime = 0;
         this.snakeAnimationDuration = 100; // 100ms animation
         this.snakeAnimationStartPositions = [];
+        
+        // Level 3: Continuous movement properties
+        this.hasStartedMoving = false;
+        this.lastDirection = 'none';
         this.snakeAnimationEndPositions = [];
         
         // Level 20 and 21: Grace period properties
@@ -485,6 +489,10 @@ class Game {
         this.gracePeriodActive = false;
         this.gracePeriodStartTime = 0;
         this.gracePeriodKillingTile = null;
+        
+        // Level 3: Reset continuous movement
+        this.hasStartedMoving = false;
+        this.lastDirection = 'none';
         
         // Level 15: Reset enemy movement tracking
         this.enemyLastPositions = new Map();
@@ -1308,8 +1316,57 @@ class Game {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
+        // Level 3: Continuous movement after first input
+        if (this.currentLevel === 3) {
+            // Check for first input to start continuous movement
+            if (!this.hasStartedMoving) {
+                if (this.keys['w'] || this.keys['ArrowUp']) {
+                    this.hasStartedMoving = true;
+                    this.lastDirection = 'up';
+                } else if (this.keys['s'] || this.keys['ArrowDown']) {
+                    this.hasStartedMoving = true;
+                    this.lastDirection = 'down';
+                } else if (this.keys['a'] || this.keys['ArrowLeft']) {
+                    this.hasStartedMoving = true;
+                    this.lastDirection = 'left';
+                } else if (this.keys['d'] || this.keys['ArrowRight']) {
+                    this.hasStartedMoving = true;
+                    this.lastDirection = 'right';
+                }
+            }
+            
+            // If movement has started, check for new direction input or continue in last direction
+            if (this.hasStartedMoving) {
+                // Check for new direction input
+                if (this.keys['w'] || this.keys['ArrowUp']) {
+                    this.lastDirection = 'up';
+                } else if (this.keys['s'] || this.keys['ArrowDown']) {
+                    this.lastDirection = 'down';
+                } else if (this.keys['a'] || this.keys['ArrowLeft']) {
+                    this.lastDirection = 'left';
+                } else if (this.keys['d'] || this.keys['ArrowRight']) {
+                    this.lastDirection = 'right';
+                }
+                
+                // Apply movement based on last direction
+                switch (this.lastDirection) {
+                    case 'up':
+                        dy -= currentSpeed;
+                        break;
+                    case 'down':
+                        dy += currentSpeed;
+                        break;
+                    case 'left':
+                        dx -= currentSpeed;
+                        break;
+                    case 'right':
+                        dx += currentSpeed;
+                        break;
+                }
+            }
+        }
         // Level 16, 17, 18, 19, and 20: Cardinal direction movement with continuous movement
-        if (this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19 || this.currentLevel === 20) {
+        else if (this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19 || this.currentLevel === 20) {
             // Initialize player direction if not set
             if (!this.player.currentDirection) {
                 this.player.currentDirection = 'none';

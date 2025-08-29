@@ -26,6 +26,86 @@ export function createLevel16Polygon(points, player, safeZones) {
     return newPolygon;
 }
 
+export function createLevel17Polygon(points, player, safeZones) {
+    if (points.length < 3) return null;
+    
+    // Create a new safe zone that follows the user's drawn line exactly
+    const newPolygon = [...points];
+    
+    // Check if there's a gap between start and end points
+    const startPoint = points[0];
+    const endPoint = points[points.length - 1];
+    
+    // Check if there's a gap between start and end points
+    const distance = Math.sqrt(
+        Math.pow(startPoint.x - endPoint.x, 2) + 
+        Math.pow(startPoint.y - endPoint.y, 2)
+    );
+    
+    if (distance > 5) { // If there's a significant gap
+        // Fill the gap with cardinal-direction lines back to the start point
+        const gapFillPoints = createCardinalPathToStart(endPoint, startPoint, points, safeZones);
+        newPolygon.push(...gapFillPoints);
+    }
+    
+    // Kill diagonals in the resulting polygon
+    return killDiagonalsInPolygon(newPolygon);
+}
+
+export function killDiagonalsInPolygon(polygon) {
+    if (polygon.length < 3) return polygon;
+    
+    const result = [];
+    
+    for (let i = 0; i < polygon.length; i++) {
+        const current = polygon[i];
+        const next = polygon[(i + 1) % polygon.length];
+        
+        // Check if this edge is diagonal
+        const dx = Math.abs(next.x - current.x);
+        const dy = Math.abs(next.y - current.y);
+        
+        // If both dx and dy are significant, it's a diagonal
+        if (dx > 2 && dy > 2) {
+            // Break diagonal into horizontal and vertical segments
+            const brokenSegments = breakDiagonalLine(current, next);
+            // Add all segments except the last one (to avoid duplicates)
+            for (let j = 0; j < brokenSegments.length - 1; j++) {
+                result.push(brokenSegments[j]);
+            }
+        } else {
+            // Not diagonal, keep as is
+            result.push(current);
+        }
+    }
+    
+    return result;
+}
+
+function breakDiagonalLine(start, end) {
+    const segments = [];
+    
+    // Determine which direction to go first (horizontal or vertical)
+    const dx = Math.abs(end.x - start.x);
+    const dy = Math.abs(end.y - start.y);
+    
+    if (dx > dy) {
+        // Go horizontal first, then vertical
+        const horizontalPoint = { x: end.x, y: start.y };
+        segments.push(start);
+        segments.push(horizontalPoint);
+        segments.push(end);
+    } else {
+        // Go vertical first, then horizontal
+        const verticalPoint = { x: start.x, y: end.y };
+        segments.push(start);
+        segments.push(verticalPoint);
+        segments.push(end);
+    }
+    
+    return segments;
+}
+
 function createCardinalPathToStart(fromPoint, toPoint, playerPath, safeZones) {
     const path = [];
     
@@ -329,13 +409,15 @@ export function createPolygonFromLine(points, currentLevel, player, safeZones) {
         return createLevel3Polygon(points, player, safeZones);
     } else if (currentLevel === 4 || currentLevel === 14) {
         return createLevel4Polygon(points, player, safeZones);
-    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16) {
+    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17) {
         if (currentLevel === 11 || currentLevel === 13 || currentLevel === 15) {
             return createLevel11Polygon(points, player, safeZones);
         } else if (currentLevel === 12) {
             return createLevel12Polygon(points, player, safeZones);
         } else if (currentLevel === 16) {
             return createLevel16Polygon(points, player, safeZones);
+        } else if (currentLevel === 17) {
+            return createLevel17Polygon(points, player, safeZones);
         } else {
             return createLevel8Polygon(points, player, safeZones);
         }

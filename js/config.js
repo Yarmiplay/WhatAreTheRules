@@ -38,17 +38,21 @@ export const LEVEL_TITLES = {
     3: "Territory Mastery",
     4: "Territory Fusion",
     5: "Time Pressure",
-    6: "You are the enemy",
-    7: "AI Hunt",
+    6: "You Are the Enemy",
+    7: "The Hunt",
     8: "Maybe Normal",
     9: "Score!",
     10: "100%",
-    11: "Power up",
-    12: "Time's up",
-    13: "Time attack",
+    11: "Power Up",
+    12: "Time's Up",
+    13: "Time Attack",
     14: "Wombo Combo",
     15: "Advantage",
-    16: "Pacman"
+    16: "Cardinal",
+    17: "Limited",
+    18: "Limited Power",
+    19: "Shrinking Power",
+    20: "Snake"
 };
 
 export const POWER_UP_TYPES = {

@@ -360,6 +360,8 @@ class Game {
             this.setupLevel15();
         } else if (this.currentLevel === 16) {
             this.setupLevel16();
+        } else if (this.currentLevel === 17) {
+            this.setupLevel17();
         } else {
             this.setupRegularLevel();
         }
@@ -442,6 +444,33 @@ class Game {
             },
             {
                 x: this.canvas.width * 3 / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            }
+        ];
+    }
+    
+    setupLevel17() {
+        // Create 3 regular enemies for Level 17 (same as Level 16 but with normal enemies)
+        this.enemies = [
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 4,
                 y: this.canvas.height * 3 / 4,
                 radius: GAME_CONFIG.ENEMY_RADIUS,
                 speed: getRandomSpeed(),
@@ -566,7 +595,7 @@ class Game {
                 this.currentLevel === 5 || this.currentLevel === 8 || this.currentLevel === 9 || 
                 this.currentLevel === 10 || this.currentLevel === 11 || this.currentLevel === 12 || 
                 this.currentLevel === 13 || this.currentLevel === 14 || this.currentLevel === 15 || 
-                this.currentLevel === 16) {
+                this.currentLevel === 16 || this.currentLevel === 17) {
                 // For polygon levels, create a proper polygon area
                 const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
                 const newSafeZone = {
@@ -586,11 +615,11 @@ class Game {
                 // For level 12, the merged polygon will be marked as temporary after merging
                 // (The timer is set in the mergeSafeZones function for Level 12)
                 
-                // Level 4, 7, 8, 9, 10, 11, 12, 13, 14, 15: Merge with existing safe zones
+                // Level 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17: Merge with existing safe zones
                 if (this.currentLevel === 4 || this.currentLevel === 7 || this.currentLevel === 8 || 
                                     this.currentLevel === 9 || this.currentLevel === 10 || this.currentLevel === 11 || 
                 this.currentLevel === 12 || this.currentLevel === 13 || this.currentLevel === 14 || 
-                this.currentLevel === 15) {
+                this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 17) {
                     this.safeZones = mergeSafeZones(newSafeZone, this.currentLevel, this.safeZones, this.enemies, this.apples);
                 } else {
                     this.safeZones.push(newSafeZone);
@@ -829,8 +858,8 @@ class Game {
             }
         }
         
-        // Check power-up collection (Level 11, 13, 15, and 16)
-        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+                 // Check power-up collection (Level 11, 13, 15, and 16)
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
             if (this.powerUpSystem.checkPowerUpCollection(this.player)) {
                 this.updateDisplay();
             }
@@ -866,14 +895,14 @@ class Game {
         let dx = 0;
         let dy = 0;
         
-        // Calculate current speed (with power-up boost for Level 11, 13, 15, and 16)
-        let currentSpeed = this.player.speed;
-        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+                 // Calculate current speed (with power-up boost for Level 11, 13, 15, and 16)
+         let currentSpeed = this.player.speed;
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
-        // Level 16: Cardinal direction movement with continuous movement
-        if (this.currentLevel === 16) {
+        // Level 16 and 17: Cardinal direction movement with continuous movement
+        if (this.currentLevel === 16 || this.currentLevel === 17) {
             // Initialize player direction if not set
             if (!this.player.currentDirection) {
                 this.player.currentDirection = 'none';
@@ -1555,13 +1584,21 @@ class Game {
                     }
                     break;
                     
-                case 16:
-                    // Level 16: Complete when board is 85% filled AND all enemies are eaten
-                    if (this.calculateBoardCompletion() >= 85 && this.enemies.length === 0) {
-                        this.completeLevel();
-                        return;
-                    }
-                    break;
+                                 case 16:
+                     // Level 16: Complete when board is 85% filled AND all enemies are eaten
+                     if (this.calculateBoardCompletion() >= 85 && this.enemies.length === 0) {
+                         this.completeLevel();
+                         return;
+                     }
+                     break;
+                     
+                 case 17:
+                     // Level 17: Complete when board is 85% filled
+                     if (this.calculateBoardCompletion() >= 85) {
+                         this.completeLevel();
+                         return;
+                     }
+                     break;
                     
                 default:
                     // Check for level completion (85% board filled OR all enemies converted to apples)
@@ -1578,8 +1615,8 @@ class Game {
             this.checkCollisions();
             this.checkTemporaryZones(); // Check for expired temporary zones
             
-            // Update power-ups for Level 11, 13, 15, and 16
-            if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+                         // Update power-ups for Level 11, 13, 15, and 16
+             if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
                 this.powerUpSystem.updatePowerUps();
             }
             

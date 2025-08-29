@@ -1,10 +1,11 @@
 // Safe zone merging logic for different levels
 import { createConvexHull, calculatePolygonBounds, isPointInPolygon } from './utils.js';
 import { GAME_CONFIG } from './config.js';
+import { killDiagonalsInPolygon } from './polygon-creators.js';
 
 export function mergeSafeZones(newZone, currentLevel, safeZones, enemies, apples) {
-    // Level 4, 8, 10, 11, 12, 13, 15, and 16: Merge new zone with existing zones
-    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16) {
+    // Level 4, 8, 10, 11, 12, 13, 15, 16, and 17: Merge new zone with existing zones
+    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17) {
         return mergeLevel8Style(newZone, currentLevel, safeZones, enemies, apples);
     } else if (currentLevel === 4 || currentLevel === 14) {
         return mergeLevel4Style(newZone, safeZones, enemies, apples);
@@ -60,6 +61,22 @@ function mergeLevel8Style(newZone, currentLevel, safeZones, enemies, apples) {
                 createdAt: Date.now(),
                 lifespan: 8000, // 8 seconds
                 killPlayerOnExpire: true // Kill player if this zone expires
+            }];
+        } else if (currentLevel === 17) {
+            // Level 17: Create a merged polygon and kill diagonals
+            const mergedPoints = [...existingPolygonZone.points, ...newZone.points];
+            
+            // Create convex hull to create a proper merged polygon
+            const mergedPolygon = createConvexHull(mergedPoints);
+            
+            // Kill diagonals in the merged polygon
+            const diagonalFreePolygon = killDiagonalsInPolygon(mergedPolygon);
+            
+            // Replace the existing zone with the merged zone
+            return [{
+                type: 'polygon',
+                points: diagonalFreePolygon,
+                bounds: calculatePolygonBounds(diagonalFreePolygon)
             }];
         } else {
             // Level 8 and 10: Create a merged polygon that combines the existing area with the new area

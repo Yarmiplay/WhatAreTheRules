@@ -595,8 +595,8 @@ class Game {
         this.tileWidth = this.canvas.width / this.gridCols;
         this.tileHeight = this.canvas.height / this.gridRows;
         
-        // Snake setup - start at column 3 (one tile left from previous column 4)
-        const startX = 3;
+        // Snake setup - start at column 2 (more space from walls)
+        const startX = 2;
         const startY = Math.floor(this.gridRows / 2);
         
         this.snakeBody = [
@@ -967,15 +967,15 @@ class Game {
                         lineEnd.x, lineEnd.y
                     );
                     
-                                         if (distance < enemy.radius) {
-                         // Level 11, 13, 15, 18, and 19: Check if player is invincible
-                         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                    if (distance < enemy.radius) {
+                        // Level 11, 13, 15, 18, and 19: Check if player is invincible
+                        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                              // Player is invincible, ignore collision
-                         } else {
-                             this.gameOver();
-                             return;
-                         }
-                     }
+                        } else {
+                            this.gameOver();
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -1079,25 +1079,6 @@ class Game {
             
             // Level 20: Special snake movement
             if (this.currentLevel === 20) {
-                // Handle input for snake direction
-                if (this.keys['w'] || this.keys['ArrowUp']) {
-                    if (this.snakeDirection !== 'down') {
-                        this.nextDirection = 'up';
-                    }
-                } else if (this.keys['s'] || this.keys['ArrowDown']) {
-                    if (this.snakeDirection !== 'up') {
-                        this.nextDirection = 'down';
-                    }
-                } else if (this.keys['a'] || this.keys['ArrowLeft']) {
-                    if (this.snakeDirection !== 'right') {
-                        this.nextDirection = 'left';
-                    }
-                } else if (this.keys['d'] || this.keys['ArrowRight']) {
-                    if (this.snakeDirection !== 'left') {
-                        this.nextDirection = 'right';
-                    }
-                }
-                
                 // Snake movement is handled in updateLevel20Snake()
                 return; // Skip normal movement for Level 20
             }
@@ -2314,9 +2295,31 @@ class Game {
     }
     
     updateLevel20Snake() {
+        // 1. ANIMATION FIRST - Update animation progress
+        this.updateSnakeAnimation();
+        
         // Update apple animation
         if (this.apples.length > 0) {
             this.apples[0].animationTime += 16; // Assuming 60fps
+        }
+        
+        // 2. INPUT - Handle input for snake direction
+        if (this.keys['w'] || this.keys['ArrowUp']) {
+            if (this.snakeDirection !== 'down') {
+                this.nextDirection = 'up';
+            }
+        } else if (this.keys['s'] || this.keys['ArrowDown']) {
+            if (this.snakeDirection !== 'up') {
+                this.nextDirection = 'down';
+            }
+        } else if (this.keys['a'] || this.keys['ArrowLeft']) {
+            if (this.snakeDirection !== 'right') {
+                this.nextDirection = 'left';
+            }
+        } else if (this.keys['d'] || this.keys['ArrowRight']) {
+            if (this.snakeDirection !== 'left') {
+                this.nextDirection = 'right';
+            }
         }
         
         // Don't move until player has made first input
@@ -2327,16 +2330,13 @@ class Game {
             return;
         }
         
-        // Update animation
-        this.updateSnakeAnimation();
-        
-        // Start new animation before updating positions
-        this.startSnakeAnimation();
-        
         // Update direction
         this.snakeDirection = this.nextDirection;
         
-        // Move snake
+        // Start new animation
+        this.startSnakeAnimation();
+        
+        // 3. COLLISION - Calculate new head position
         const head = this.snakeBody[0];
         let newHeadX = head.x;
         let newHeadY = head.y;
@@ -2347,27 +2347,28 @@ class Game {
             case 'left': newHeadX--; break;
             case 'right': newHeadX++; break;
         }
-        
-        // Check wall collision
+
+        // Check wall collision first
         if (newHeadX < 0 || newHeadX >= this.gridCols || newHeadY < 0 || newHeadY >= this.gridRows) {
             this.gameOver();
             return;
         }
-        
+
         // Check self collision
         if (this.snakeBody.some(segment => segment.x === newHeadX && segment.y === newHeadY)) {
             this.gameOver();
             return;
         }
-        
+
         // Add new head
         this.snakeBody.unshift({ x: newHeadX, y: newHeadY });
-        
+
         // Check apple collision
         if (this.apples.length > 0) {
             const apple = this.apples[0];
             if (newHeadX === apple.x && newHeadY === apple.y) {
                 this.score += 100;
+                this.snakeLength++; // Increase snake length
                 this.spawnLevel20Apple(false);
             } else {
                 // Remove tail if no apple eaten
@@ -2378,12 +2379,12 @@ class Game {
             this.snakeBody.pop();
         }
         
-        this.lastMoveTime = currentTime;
-        
         // Check win condition
         if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
             this.completeLevel();
         }
+
+        this.lastMoveTime = currentTime;
     }
     
     startSnakeAnimation() {
@@ -2427,8 +2428,7 @@ class Game {
     }
     
     updateSnakeAnimation() {
-        if (!this.isSnakeAnimating) return;
-        
+      
         const currentTime = Date.now();
         const elapsed = currentTime - this.snakeAnimationStartTime;
         this.snakeAnimationProgress = Math.min(elapsed / this.snakeAnimationDuration, 1);

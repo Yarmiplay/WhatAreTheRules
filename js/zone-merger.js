@@ -4,8 +4,8 @@ import { GAME_CONFIG } from './config.js';
 import { killDiagonalsInPolygon } from './polygon-creators.js';
 
 export function mergeSafeZones(newZone, currentLevel, safeZones, enemies, apples) {
-    // Level 4, 8, 10, 11, 12, 13, 15, 16, and 17: Merge new zone with existing zones
-    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17) {
+    // Level 4, 8, 10, 11, 12, 13, 15, 16, 17, 18, and 19: Merge new zone with existing zones
+    if (currentLevel === 8 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17 || currentLevel === 18 || currentLevel === 19) {
         return mergeLevel8Style(newZone, currentLevel, safeZones, enemies, apples);
     } else if (currentLevel === 4 || currentLevel === 14) {
         return mergeLevel4Style(newZone, safeZones, enemies, apples);

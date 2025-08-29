@@ -409,12 +409,12 @@ export function createPolygonFromLine(points, currentLevel, player, safeZones) {
         return createLevel3Polygon(points, player, safeZones);
     } else if (currentLevel === 4 || currentLevel === 14) {
         return createLevel4Polygon(points, player, safeZones);
-    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17) {
+    } else if (currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11 || currentLevel === 12 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 17 || currentLevel === 18 || currentLevel === 19) {
         if (currentLevel === 11 || currentLevel === 13 || currentLevel === 15) {
             return createLevel11Polygon(points, player, safeZones);
         } else if (currentLevel === 12) {
             return createLevel12Polygon(points, player, safeZones);
-        } else if (currentLevel === 16) {
+        } else if (currentLevel === 16 || currentLevel === 18 || currentLevel === 19) {
             return createLevel16Polygon(points, player, safeZones);
         } else if (currentLevel === 17) {
             return createLevel17Polygon(points, player, safeZones);

@@ -330,8 +330,8 @@ class Game {
         // Reset shrinking timer for level 13 and 14
         this.shrinkingTimer = null;
         
-        // Reset power-up system for Level 11, 13, 15, and 16
-        if (this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) {
+        // Reset power-up system for Level 11, 13, 15, 16, and 18
+        if (this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) {
             this.powerUpSystem = new PowerUpSystem(this.canvas, (x, y) => this.isPositionInSafeZone(x, y), this.currentLevel);
             this.powerUpSystem.spawnPowerUp(); // Spawn initial power-up
         } else {
@@ -594,8 +594,8 @@ class Game {
             if (this.currentLevel === 2 || this.currentLevel === 3 || this.currentLevel === 4 || 
                 this.currentLevel === 5 || this.currentLevel === 8 || this.currentLevel === 9 || 
                 this.currentLevel === 10 || this.currentLevel === 11 || this.currentLevel === 12 || 
-                this.currentLevel === 13 || this.currentLevel === 14 || this.currentLevel === 15 || 
-                this.currentLevel === 16 || this.currentLevel === 17) {
+                this.currentLevel === 13 || this.currentLevel === 14 ||                 this.currentLevel === 15 || 
+                this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
                 // For polygon levels, create a proper polygon area
                 const polygon = createPolygonFromLine(points, this.currentLevel, this.player, this.safeZones);
                 const newSafeZone = {
@@ -619,7 +619,7 @@ class Game {
                 if (this.currentLevel === 4 || this.currentLevel === 7 || this.currentLevel === 8 || 
                                     this.currentLevel === 9 || this.currentLevel === 10 || this.currentLevel === 11 || 
                 this.currentLevel === 12 || this.currentLevel === 13 || this.currentLevel === 14 || 
-                this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 17) {
+                this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
                     this.safeZones = mergeSafeZones(newSafeZone, this.currentLevel, this.safeZones, this.enemies, this.apples);
                 } else {
                     this.safeZones.push(newSafeZone);
@@ -858,8 +858,8 @@ class Game {
             }
         }
         
-                 // Check power-up collection (Level 11, 13, 15, and 16)
-         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+                 // Check power-up collection (Level 11, 13, 15, 16, and 18)
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
             if (this.powerUpSystem.checkPowerUpCollection(this.player)) {
                 this.updateDisplay();
             }
@@ -897,12 +897,12 @@ class Game {
         
                  // Calculate current speed (with power-up boost for Level 11, 13, 15, and 16)
          let currentSpeed = this.player.speed;
-         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
-        // Level 16 and 17: Cardinal direction movement with continuous movement
-        if (this.currentLevel === 16 || this.currentLevel === 17) {
+        // Level 16, 17, 18, and 19: Cardinal direction movement with continuous movement
+        if (this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
             // Initialize player direction if not set
             if (!this.player.currentDirection) {
                 this.player.currentDirection = 'none';
@@ -987,8 +987,8 @@ class Game {
                 
                                  // Only check if player center is very close to the line (within 2 pixels)
                  if (distance < 2) {
-                     // Level 11, 13, 15, and 16: Check if player is invincible
-                     if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                     // Level 11, 13, 15, 16, and 18: Check if player is invincible
+                     if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                          // Player is invincible, ignore collision
                      } else {
                          this.gameOver();
@@ -1615,8 +1615,8 @@ class Game {
             this.checkCollisions();
             this.checkTemporaryZones(); // Check for expired temporary zones
             
-                         // Update power-ups for Level 11, 13, 15, and 16
-             if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16) && this.powerUpSystem) {
+                         // Update power-ups for Level 11, 13, 15, 16, and 18
+             if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
                 this.powerUpSystem.updatePowerUps();
             }
             

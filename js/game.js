@@ -242,6 +242,11 @@ class Game {
         
         // Only add valid directions to the buffer
         if (isValidDirection) {
+            // Don't add current snake direction if the input buffer is empty
+            if (this.inputBuffer.length === 0 && direction === this.snakeDirection) {
+                return;
+            }
+            
             // Check if this direction is already in the buffer to avoid duplicates
             if (!this.inputBuffer.includes(direction)) {
                 this.inputBuffer.push(direction);

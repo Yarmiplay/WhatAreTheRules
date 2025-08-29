@@ -330,8 +330,8 @@ class Game {
         // Reset shrinking timer for level 13 and 14
         this.shrinkingTimer = null;
         
-        // Reset power-up system for Level 11, 13, 15, 16, and 18
-        if (this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) {
+        // Reset power-up system for Level 11, 13, 15, 16, 18, and 19
+        if (this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) {
             this.powerUpSystem = new PowerUpSystem(this.canvas, (x, y) => this.isPositionInSafeZone(x, y), this.currentLevel);
             this.powerUpSystem.spawnPowerUp(); // Spawn initial power-up
         } else {
@@ -362,6 +362,10 @@ class Game {
             this.setupLevel16();
         } else if (this.currentLevel === 17) {
             this.setupLevel17();
+        } else if (this.currentLevel === 18) {
+            this.setupLevel18();
+        } else if (this.currentLevel === 19) {
+            this.setupLevel19();
         } else {
             this.setupRegularLevel();
         }
@@ -454,6 +458,60 @@ class Game {
     
     setupLevel17() {
         // Create 3 regular enemies for Level 17 (same as Level 16 but with normal enemies)
+        this.enemies = [
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            }
+        ];
+    }
+    
+    setupLevel18() {
+        // Create 3 regular enemies for Level 18 (same as Level 17 but with power-ups for player only)
+        this.enemies = [
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            }
+        ];
+    }
+    
+    setupLevel19() {
+        // Create 3 regular enemies for Level 19 (same as Level 18 but enemies can use power-ups + board shrinks)
         this.enemies = [
             {
                 x: this.canvas.width / 4,
@@ -799,8 +857,8 @@ class Game {
                         continue;
                     }
                     
-                    // Level 11, 13, and 15: Check if player is invincible
-                    if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                    // Level 11, 13, 15, 18, and 19: Check if player is invincible
+                    if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                         // Player is invincible, ignore collision
                     } else {
                         this.gameOver();
@@ -824,8 +882,8 @@ class Game {
                     );
                     
                                          if (distance < enemy.radius) {
-                         // Level 11, 13, and 15: Check if player is invincible
-                         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                         // Level 11, 13, 15, 18, and 19: Check if player is invincible
+                         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                              // Player is invincible, ignore collision
                          } else {
                              this.gameOver();
@@ -858,14 +916,14 @@ class Game {
             }
         }
         
-                 // Check power-up collection (Level 11, 13, 15, 16, and 18)
-         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
+                 // Check power-up collection (Level 11, 13, 15, 16, 18, and 19)
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
             if (this.powerUpSystem.checkPowerUpCollection(this.player)) {
                 this.updateDisplay();
             }
             
-            // Level 15: Check enemy power-up collection
-            if (this.currentLevel === 15) {
+            // Level 15 and 19: Check enemy power-up collection
+            if (this.currentLevel === 15 || this.currentLevel === 19) {
                 const enemyPowerUpResult = this.powerUpSystem.checkEnemyPowerUpCollection(this.enemies);
                 if (enemyPowerUpResult) {
                     if (enemyPowerUpResult.type === 'split') {
@@ -884,8 +942,8 @@ class Game {
             }
         }
         
-        // Level 11 and 13: Check win condition (all enemies removed)
-        if ((this.currentLevel === 11 || this.currentLevel === 13) && this.enemies.length === 0) {
+        // Level 11, 13, and 19: Check win condition (all enemies removed)
+        if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 19) && this.enemies.length === 0) {
             this.completeLevel();
             return;
         }
@@ -895,9 +953,9 @@ class Game {
         let dx = 0;
         let dy = 0;
         
-                 // Calculate current speed (with power-up boost for Level 11, 13, 15, and 16)
+                 // Calculate current speed (with power-up boost for Level 11, 13, 15, 16, 18, and 19)
          let currentSpeed = this.player.speed;
-         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
+         if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
@@ -987,8 +1045,8 @@ class Game {
                 
                                  // Only check if player center is very close to the line (within 2 pixels)
                  if (distance < 2) {
-                     // Level 11, 13, 15, 16, and 18: Check if player is invincible
-                     if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
+                     // Level 11, 13, 15, 16, 18, and 19: Check if player is invincible
+                     if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                          // Player is invincible, ignore collision
                      } else {
                          this.gameOver();
@@ -1171,9 +1229,9 @@ class Game {
             const lineChaseRange = 100;
             const powerUpChaseRange = 200; // Level 15: Enemies seek power-ups
             
-            // Calculate enemy speed (with turtle effect for Level 11, 13, and 15)
+            // Calculate enemy speed (with turtle effect for Level 11, 13, 15, 18, and 19)
             let enemySpeed = enemy.speed;
-            if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.powerUpSystem) {
+            if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
                 enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier(this.enemies.indexOf(enemy));
             }
             
@@ -1259,9 +1317,9 @@ class Game {
                      enemy.wanderAngle += (Math.random() - 0.5) * Math.PI / 2;
                  }
                  
-                 // Calculate enemy speed (with turtle effect for Level 11 and 13)
+                 // Calculate enemy speed (with turtle effect for Level 11, 13, 18, and 19)
                  let enemySpeed = enemy.speed * 0.5;
-                 if ((this.currentLevel === 11 || this.currentLevel === 13) && this.powerUpSystem) {
+                 if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
                      enemySpeed *= this.powerUpSystem.getEnemySpeedMultiplier();
                  }
                  
@@ -1615,8 +1673,8 @@ class Game {
             this.checkCollisions();
             this.checkTemporaryZones(); // Check for expired temporary zones
             
-                         // Update power-ups for Level 11, 13, 15, 16, and 18
-             if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18) && this.powerUpSystem) {
+                         // Update power-ups for Level 11, 13, 15, 16, 18, and 19
+             if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
                 this.powerUpSystem.updatePowerUps();
             }
             
@@ -1924,8 +1982,8 @@ class Game {
             }
         }
         
-        // Check shrinking safe zones for level 13 and 14
-        if (this.currentLevel === 13 || this.currentLevel === 14) {
+        // Check shrinking safe zones for level 13, 14, and 19
+        if (this.currentLevel === 13 || this.currentLevel === 14 || this.currentLevel === 19) {
             this.checkShrinkingSafeZones();
         }
     }
@@ -2087,6 +2145,7 @@ class Game {
     restartLevel() {
         this.gameState = 'playing';
         this.showScreen('gameScreen');
+        this.score = 0; // Reset score when restarting
         this.initializeLevel();
         this.gameLoop();
     }

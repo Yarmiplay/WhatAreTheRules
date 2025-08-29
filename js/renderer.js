@@ -302,8 +302,8 @@ export class Renderer {
         // Draw apples
         this.drawApples(gameState.apples);
         
-                // Draw power-ups (Level 11, 13, 15, and 16)
-        if ((gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16) && gameState.powerUpSystem) {
+                // Draw power-ups (Level 11, 13, 15, 16, 18, and 19)
+        if ((gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16 || gameState.currentLevel === 18 || gameState.currentLevel === 19) && gameState.powerUpSystem) {
             this.drawPowerUps(gameState.powerUpSystem.powerUps);
         }
         
@@ -318,7 +318,7 @@ export class Renderer {
         }
         
         // Draw player
-        const isInvincible = (gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16) && gameState.powerUpSystem ? 
+        const isInvincible = (gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16 || gameState.currentLevel === 18 || gameState.currentLevel === 19) && gameState.powerUpSystem ? 
             gameState.powerUpSystem.isPlayerInvincible() : false;
         this.drawPlayer(gameState.player, gameState.currentLevel, isInvincible);
     }

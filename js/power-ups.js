@@ -7,7 +7,8 @@ export class PowerUpSystem {
         this.powerUps = [];
         this.powerUpSpawnTime = 0;
         this.powerUpSpawnInterval = currentLevel === 15 ? GAME_CONFIG.POWER_UP_SPAWN_INTERVAL * 2 : 
-                                  currentLevel === 16 ? 3000 : GAME_CONFIG.POWER_UP_SPAWN_INTERVAL; // 3 seconds for Level 16
+                                  currentLevel === 16 ? 3000 : 
+                                  currentLevel === 18 || currentLevel === 19 ? GAME_CONFIG.POWER_UP_SPAWN_INTERVAL : GAME_CONFIG.POWER_UP_SPAWN_INTERVAL; // 3 seconds for Level 16
         this.playerPowerUps = {
             speedBoost: 0,
             invincibility: 0
@@ -31,6 +32,20 @@ export class PowerUpSystem {
                 type: 'mushroom',
                 symbol: '🍄',
                 color: '#8B4513',
+                collected: false
+            });
+        } else if (this.currentLevel === 18 || this.currentLevel === 19) {
+            // Level 18 and 19: Spawn regular power-ups (same as Level 11)
+            const position = getRandomPosition(this.canvas, [], this.isPositionInSafeZone);
+            const types = ['rabbit', 'turtle', 'star'];
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            
+            this.powerUps.push({
+                x: position.x,
+                y: position.y,
+                type: randomType,
+                symbol: POWER_UP_SYMBOLS[randomType],
+                color: POWER_UP_COLORS[randomType],
                 collected: false
             });
         } else {
@@ -131,7 +146,7 @@ export class PowerUpSystem {
     }
 
     checkEnemyPowerUpCollection(enemies) {
-        if (this.currentLevel !== 15) return null;
+        if (this.currentLevel !== 15 && this.currentLevel !== 19) return null;
         
         for (let i = this.powerUps.length - 1; i >= 0; i--) {
             const powerUp = this.powerUps[i];

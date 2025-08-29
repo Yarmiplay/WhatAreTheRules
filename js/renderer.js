@@ -461,6 +461,32 @@ export class Renderer {
         this.ctx.beginPath();
         this.ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
         this.ctx.stroke();
+        
+        // Draw grace period indicator if active
+        if (gameInstance && gameInstance.gracePeriodActive) {
+            this.drawGracePeriodIndicator(headX, headY, headRadius, gameInstance);
+        }
+    }
+    
+    drawGracePeriodIndicator(headX, headY, headRadius, gameInstance) {
+        const currentTime = Date.now();
+        const elapsed = currentTime - gameInstance.gracePeriodStartTime;
+        const remaining = gameInstance.gracePeriodDuration - elapsed;
+        const timeRatio = Math.max(0, remaining / gameInstance.gracePeriodDuration);
+        
+        // Pulsing red border around the head
+        const pulseAlpha = 0.3 + (0.7 * (1 - timeRatio)); // Fade from 1.0 to 0.3
+        this.ctx.strokeStyle = `rgba(255, 0, 0, ${pulseAlpha})`;
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(headX, headY, headRadius + 4, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Draw warning text
+        this.ctx.fillStyle = `rgba(255, 0, 0, ${pulseAlpha})`;
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('TURN!', headX, headY - headRadius - 10);
     }
     
     drawLevel20Apples(apples, tileWidth, tileHeight) {

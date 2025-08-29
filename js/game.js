@@ -79,6 +79,33 @@ class Game {
         // Renderer
         this.renderer = new Renderer(this.canvas);
         
+        // Level 20 and 21: Snake properties
+        this.snakeBody = [];
+        this.snakeDirection = 'right';
+        this.nextDirection = 'right';
+        this.moveInterval = 135;
+        this.lastMoveTime = 0;
+        this.hasMoved = false;
+        this.levelStartTime = 0;
+        
+        // Level 20 and 21: Input buffer for better responsiveness
+        this.inputBuffer = [];
+                    this.maxInputBufferSize = 5; // Store up to 5 inputs for better buffering
+        
+        // Level 20 and 21: Animation properties
+        this.isSnakeAnimating = false;
+        this.snakeAnimationProgress = 0;
+        this.snakeAnimationStartTime = 0;
+        this.snakeAnimationDuration = 100; // 100ms animation
+        this.snakeAnimationStartPositions = [];
+        this.snakeAnimationEndPositions = [];
+        
+        // Level 20 and 21: Grace period properties
+        this.gracePeriodActive = false;
+        this.gracePeriodStartTime = 0;
+        this.gracePeriodDuration = 100; // 100ms grace period
+        this.gracePeriodKillingTile = null; // Store the tile that would kill the snake
+        
         this.init();
     }
     
@@ -145,12 +172,39 @@ class Game {
                 this.pauseGame();
             }
             
-                    // Level 20 and 21: Start timer on first move
-        if ((this.currentLevel === 20 || this.currentLevel === 21) && !this.hasMoved && 
-            (e.key === 'w' || e.key === 's' || e.key === 'a' || e.key === 'd' || 
-             e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-            this.hasMoved = true;
-            this.levelStartTime = Date.now();
+                    // Level 20 and 21: Input buffering for better responsiveness
+        if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
+            let direction = null;
+            
+            switch (e.key) {
+                case 'w':
+                case 'ArrowUp':
+                    direction = 'up';
+                    break;
+                case 's':
+                case 'ArrowDown':
+                    direction = 'down';
+                    break;
+                case 'a':
+                case 'ArrowLeft':
+                    direction = 'left';
+                    break;
+                case 'd':
+                case 'ArrowRight':
+                    direction = 'right';
+                    break;
+            }
+            
+            if (direction) {
+                // Start timer on first move
+                if (!this.hasMoved) {
+                    this.hasMoved = true;
+                    this.levelStartTime = Date.now();
+                }
+                
+                // Add to input buffer
+                this.addToInputBuffer(direction);
+            }
         }
             
             // Start drawing with spacebar when in safe zone
@@ -403,6 +457,14 @@ class Game {
         
         // Level 20: Reset walls
         this.walls = [];
+        
+        // Level 20 and 21: Reset input buffer
+        this.inputBuffer = [];
+        
+        // Level 20 and 21: Reset grace period
+        this.gracePeriodActive = false;
+        this.gracePeriodStartTime = 0;
+        this.gracePeriodKillingTile = null;
         
         // Level 15: Reset enemy movement tracking
         this.enemyLastPositions = new Map();
@@ -741,7 +803,7 @@ class Game {
         
         // Initialize animation properties
         this.snakeAnimationProgress = 0;
-        this.snakeAnimationDuration = 135; // Same as move interval
+        this.snakeAnimationDuration = 270; // Same as move interval
         this.snakeAnimationStartTime = 0;
         this.snakeAnimationStartPositions = [];
         this.snakeAnimationEndPositions = [];
@@ -2574,25 +2636,6 @@ class Game {
             this.apples[0].animationTime += 16; // Assuming 60fps
         }
         
-        // 2. INPUT - Handle input for snake direction
-        if (this.keys['w'] || this.keys['ArrowUp']) {
-            if (this.snakeDirection !== 'down') {
-                this.nextDirection = 'up';
-            }
-        } else if (this.keys['s'] || this.keys['ArrowDown']) {
-            if (this.snakeDirection !== 'up') {
-                this.nextDirection = 'down';
-            }
-        } else if (this.keys['a'] || this.keys['ArrowLeft']) {
-            if (this.snakeDirection !== 'right') {
-                this.nextDirection = 'left';
-            }
-        } else if (this.keys['d'] || this.keys['ArrowRight']) {
-            if (this.snakeDirection !== 'left') {
-                this.nextDirection = 'right';
-            }
-        }
-        
         // Don't move until player has made first input
         if (!this.hasMoved) { return; }
         
@@ -2600,6 +2643,9 @@ class Game {
         if (currentTime - this.lastMoveTime < this.moveInterval) {
             return;
         }
+
+        // Process all buffered inputs before movement
+        this.processInputBuffer();
         
         // Update direction
         this.snakeDirection = this.nextDirection;
@@ -2619,22 +2665,33 @@ class Game {
             case 'right': newHeadX++; break;
         }
 
-        // Check wall collision first
-        if (newHeadX < 0 || newHeadX >= this.gridCols || newHeadY < 0 || newHeadY >= this.gridRows) {
-            this.gameOver();
-            return;
-        }
-
-        // Check self collision
-        if (this.snakeBody.some(segment => segment.x === newHeadX && segment.y === newHeadY)) {
-            this.gameOver();
-            return;
-        }
-        
-        // Check wall collision
-        if (this.walls.some(wall => wall.x === newHeadX && wall.y === newHeadY)) {
-            this.gameOver();
-            return;
+        // Check for killing collisions and handle grace period
+        const killingTile = this.checkForKillingTile(newHeadX, newHeadY);
+        if (killingTile) {
+            if (!this.gracePeriodActive) {
+                // Start grace period
+                this.gracePeriodActive = true;
+                this.gracePeriodStartTime = Date.now();
+                this.gracePeriodKillingTile = killingTile;
+                return; // Don't move this frame, give player time to turn
+            } else {
+                // Check if grace period has expired
+                const currentTime = Date.now();
+                if (currentTime - this.gracePeriodStartTime >= this.gracePeriodDuration) {
+                    this.gameOver();
+                    return;
+                } else {
+                    // Still in grace period, don't move
+                    return;
+                }
+            }
+        } else {
+            // No killing tile ahead, clear grace period if it was active
+            if (this.gracePeriodActive) {
+                this.gracePeriodActive = false;
+                this.gracePeriodStartTime = 0;
+                this.gracePeriodKillingTile = null;
+            }
         }
 
         // Add new head
@@ -2676,10 +2733,68 @@ class Game {
             this.snakeBody.pop();
         }
         
-        // Level 20: Update wall lifespans
+        // Update wall lifespan
         this.updateLevel20Walls();
-
+        
+        // Update last move time
         this.lastMoveTime = currentTime;
+    }
+    
+    addToInputBuffer(direction) {
+        // Only add direction if it's different from the last direction in buffer
+        if (this.inputBuffer.length === 0 || this.inputBuffer[this.inputBuffer.length - 1] !== direction) {
+            this.inputBuffer.push(direction);
+            
+            // Keep buffer size limited
+            if (this.inputBuffer.length > this.maxInputBufferSize) {
+                this.inputBuffer.shift();
+            }
+            console.log(this.inputBuffer);
+        }
+    }
+    
+    processInputBuffer() {
+        // Process inputs in LIFO order (most recent first)
+        let lastValidDirection = null;
+        
+        while (this.inputBuffer.length > 0) {
+            const direction = this.inputBuffer.pop(); // Use pop() instead of shift() for LIFO
+            
+            // Check if the direction is valid (not opposite to current direction)
+            if ((direction === 'up' && this.snakeDirection !== 'down') ||
+                (direction === 'down' && this.snakeDirection !== 'up') ||
+                (direction === 'left' && this.snakeDirection !== 'right') ||
+                (direction === 'right' && this.snakeDirection !== 'left')) {
+                
+                lastValidDirection = direction;
+                console.log(lastValidDirection);
+                break; // Use the first valid direction found (most recent)
+            }
+        }
+        
+        // Update next direction if we found a valid input
+        if (lastValidDirection) {
+            this.nextDirection = lastValidDirection;
+        }
+    }
+    
+    checkForKillingTile(x, y) {
+        // Check boundary collision
+        if (x < 0 || x >= this.gridCols || y < 0 || y >= this.gridRows) {
+            return { type: 'boundary', x: x, y: y };
+        }
+        
+        // Check self collision
+        if (this.snakeBody.some(segment => segment.x === x && segment.y === y)) {
+            return { type: 'self', x: x, y: y };
+        }
+        
+        // Check wall collision
+        if (this.walls.some(wall => wall.x === x && wall.y === y)) {
+            return { type: 'wall', x: x, y: y };
+        }
+        
+        return null; // No killing tile
     }
     
     startSnakeAnimation() {
@@ -2774,9 +2889,15 @@ class Game {
         this.score = 0; // Reset score when restarting
         
         // Reset timer for current level (but not global speedrun timer)
-        if (this.currentLevel === 20) {
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
             this.hasMoved = false;
             this.levelStartTime = Date.now();
+            // Reset input buffer for levels 20 and 21
+            this.inputBuffer = [];
+            // Reset grace period for levels 20 and 21
+            this.gracePeriodActive = false;
+            this.gracePeriodStartTime = 0;
+            this.gracePeriodKillingTile = null;
         } else {
             // For other levels, reset the level start time
             this.levelStartTime = Date.now();

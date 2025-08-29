@@ -518,7 +518,7 @@ export class Renderer {
                 const pulse = Math.sin(currentTime * animationSpeed) * 0.5 + 0.5; // 0 to 1
                 
                 alpha = 0.7 + (pulse * pulseIntensity); // Fade between 0.7 and 1.0
-                scale = 1.0 + (pulse * scaleIntensity); // Scale between 1.0 and 1.1
+                scale = 1.0 - (pulse * scaleIntensity); // Scale between 1.0 and 1.1
             }
             
             // Apply scaling transformation
@@ -529,9 +529,9 @@ export class Renderer {
             this.ctx.scale(scale, scale);
             this.ctx.translate(-centerX, -centerY);
             
-            // Draw orange square wall with animation
-            this.ctx.fillStyle = `rgba(255, 140, 0, ${alpha})`; // Orange color with alpha
-            this.ctx.fillRect(x, y, tileWidth, tileHeight);
+                                 // Draw orange square wall with animation
+                     this.ctx.fillStyle = `rgba(255, 140, 0, 0.3)`; // Orange color with 0.3 opacity
+                     this.ctx.fillRect(x, y, tileWidth, tileHeight);
             
             // Add a subtle border with animation
             this.ctx.strokeStyle = `rgba(255, 107, 0, ${alpha})`; // Darker orange border with alpha

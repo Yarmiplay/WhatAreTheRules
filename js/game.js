@@ -1186,14 +1186,17 @@ class Game {
                 if (enemyPowerUpResult) {
                     if (enemyPowerUpResult.type === 'split') {
                         // Create a duplicate enemy
-                        const newEnemy = {
-                            x: enemyPowerUpResult.enemy.x,
-                            y: enemyPowerUpResult.enemy.y,
-                            radius: enemyPowerUpResult.enemy.radius,
-                            speed: enemyPowerUpResult.enemy.speed,
-                            wanderAngle: Math.random() * Math.PI * 2
-                        };
-                        this.enemies.push(newEnemy);
+                        const originalEnemy = this.enemies[enemyPowerUpResult.enemyId];
+                        if (originalEnemy) {
+                            const newEnemy = {
+                                x: originalEnemy.x,
+                                y: originalEnemy.y,
+                                radius: originalEnemy.radius,
+                                speed: originalEnemy.speed,
+                                wanderAngle: Math.random() * Math.PI * 2
+                            };
+                            this.enemies.push(newEnemy);
+                        }
                     }
                     this.updateDisplay();
                 }

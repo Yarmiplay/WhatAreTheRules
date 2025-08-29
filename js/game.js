@@ -366,6 +366,8 @@ class Game {
             this.setupLevel18();
         } else if (this.currentLevel === 19) {
             this.setupLevel19();
+        } else if (this.currentLevel === 20) {
+            this.setupLevel20();
         } else {
             this.setupRegularLevel();
         }
@@ -570,6 +572,46 @@ class Game {
                 wanderAngle: Math.random() * Math.PI * 2
             }
         ];
+    }
+    
+    setupLevel20() {
+        this.currentLevel = 20;
+        this.gameState = 'playing';
+        this.score = 0;
+        this.levelStartTime = Date.now();
+        this.hasMoved = false; // Track if player has made first move
+        
+        // Grid setup
+        this.gridCols = 10;
+        this.gridRows = 9;
+        this.tileWidth = this.canvas.width / this.gridCols;
+        this.tileHeight = this.canvas.height / this.gridRows;
+        
+        // Snake setup - start at column 3 (one tile left from previous column 4)
+        const startX = 3;
+        const startY = Math.floor(this.gridRows / 2);
+        
+        this.snakeBody = [
+            { x: startX, y: startY },
+            { x: startX - 1, y: startY },
+            { x: startX - 2, y: startY }
+        ];
+        
+        this.snakeDirection = 'right';
+        this.nextDirection = 'right';
+        this.lastMoveTime = 0;
+        this.moveInterval = 135;
+        
+        // Spawn first apple at fixed position (3 tiles from right wall)
+        this.spawnLevel20Apple(true);
+        
+        // Initialize animation properties
+        this.snakeAnimationProgress = 0;
+        this.snakeAnimationDuration = 135; // Same as move interval
+        this.snakeAnimationStartTime = 0;
+        this.snakeAnimationStartPositions = [];
+        this.snakeAnimationEndPositions = [];
+        this.isSnakeAnimating = false;
     }
     
     setupRegularLevel() {
@@ -940,7 +982,21 @@ class Game {
             if (distance < this.player.radius + apple.radius) {
                 this.score += apple.points;
                 this.apples.splice(i, 1);
-                this.respawnEnemy(); // Respawn enemy for level 4
+                
+                // Level 20: Handle snake apple collection
+                if (this.currentLevel === 20) {
+                    this.snakeLength++; // Increase snake length
+                    this.spawnLevel20Apple(false); // Spawn new apple
+                    
+                    // Check win condition (25 apples eaten)
+                    if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
+                        this.completeLevel();
+                        return;
+                    }
+                } else {
+                    this.respawnEnemy(); // Respawn enemy for level 4
+                }
+                
                 this.updateDisplay();
                 
                 // Level 9: Check if score target is reached
@@ -994,8 +1050,8 @@ class Game {
             currentSpeed *= this.powerUpSystem.getPlayerSpeedMultiplier();
         }
         
-        // Level 16, 17, 18, and 19: Cardinal direction movement with continuous movement
-        if (this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19) {
+        // Level 16, 17, 18, 19, and 20: Cardinal direction movement with continuous movement
+        if (this.currentLevel === 16 || this.currentLevel === 17 || this.currentLevel === 18 || this.currentLevel === 19 || this.currentLevel === 20) {
             // Initialize player direction if not set
             if (!this.player.currentDirection) {
                 this.player.currentDirection = 'none';
@@ -1010,6 +1066,31 @@ class Game {
                 this.player.currentDirection = 'left';
             } else if (this.keys['d'] || this.keys['ArrowRight']) {
                 this.player.currentDirection = 'right';
+            }
+            
+            // Level 20: Special snake movement
+            if (this.currentLevel === 20) {
+                // Handle input for snake direction
+                if (this.keys['w'] || this.keys['ArrowUp']) {
+                    if (this.snakeDirection !== 'down') {
+                        this.nextDirection = 'up';
+                    }
+                } else if (this.keys['s'] || this.keys['ArrowDown']) {
+                    if (this.snakeDirection !== 'up') {
+                        this.nextDirection = 'down';
+                    }
+                } else if (this.keys['a'] || this.keys['ArrowLeft']) {
+                    if (this.snakeDirection !== 'right') {
+                        this.nextDirection = 'left';
+                    }
+                } else if (this.keys['d'] || this.keys['ArrowRight']) {
+                    if (this.snakeDirection !== 'left') {
+                        this.nextDirection = 'right';
+                    }
+                }
+                
+                // Snake movement is handled in updateLevel20Snake()
+                return; // Skip normal movement for Level 20
             }
             
             // Apply movement based on current direction
@@ -1556,12 +1637,26 @@ class Game {
         document.getElementById('levelDisplay').textContent = `Level ${this.currentLevel}: ${levelTitle}`;
         document.getElementById('scoreDisplay').textContent = `Score: ${this.score}`;
         
-        // Update timer display (counting up with milliseconds)
-        const totalMilliseconds = Date.now() - this.startTime;
+        // Update timer display
+        let totalMilliseconds;
+        if (this.currentLevel === 20 && this.hasMoved) {
+            // Level 20: Timer starts on first move
+            totalMilliseconds = Date.now() - this.firstMoveTime;
+        } else {
+            // Other levels: Timer starts when level starts
+            totalMilliseconds = Date.now() - this.startTime;
+        }
         document.getElementById('timerDisplay').textContent = `Time: ${formatTime(totalMilliseconds)}`;
         
         // Update completion percentage
-        const completionPercent = this.calculateBoardCompletion();
+        let completionPercent;
+        if (this.currentLevel === 20) {
+            // Level 20: Show apples eaten progress
+            const applesEaten = this.snakeLength - 3; // Subtract initial length
+            completionPercent = (applesEaten / 25) * 100; // 25 apples to win
+        } else {
+            completionPercent = this.calculateBoardCompletion();
+        }
         document.getElementById('completionDisplay').textContent = `Completion: ${completionPercent.toFixed(1)}%`;
     }
     
@@ -1702,9 +1797,14 @@ class Game {
                     break;
             }
             
-            this.updatePlayer();
-            this.updateAIPlayer(); // Update AI player for level 6
-            this.updateEnemies();
+                    this.updatePlayer();
+        this.updateAIPlayer(); // Update AI player for level 6
+        this.updateEnemies();
+        
+        // Level 20: Update snake
+        if (this.currentLevel === 20) {
+            this.updateLevel20Snake();
+        }
             this.checkCollisions();
             this.checkTemporaryZones(); // Check for expired temporary zones
             
@@ -1722,7 +1822,14 @@ class Game {
                 aiPlayer: this.aiPlayer,
                 aiPlayers: this.aiPlayers,
                 currentLevel: this.currentLevel,
-                powerUpSystem: this.powerUpSystem
+                powerUpSystem: this.powerUpSystem,
+                // Level 20 data
+                snakeBody: this.snakeBody,
+                gridCols: this.gridCols,
+                gridRows: this.gridRows,
+                tileWidth: this.tileWidth,
+                tileHeight: this.tileHeight,
+                gameInstance: this // Pass game instance for animation
             });
             
             this.updateDisplay();
@@ -2166,6 +2273,175 @@ class Game {
         this.aiPlayers.push(newAI);
     }
     
+    spawnLevel20Apple(isInitialSpawn = false) {
+        let x, y;
+        
+        if (isInitialSpawn) {
+            // Fixed position: 3 tiles from right wall
+            x = this.gridCols - 4; // 3 tiles from right wall
+            y = Math.floor(this.gridRows / 2);
+        } else {
+            // Random position
+            do {
+                x = Math.floor(Math.random() * this.gridCols);
+                y = Math.floor(Math.random() * this.gridRows);
+            } while (this.snakeBody.some(segment => segment.x === x && segment.y === y));
+        }
+        
+        this.apples = [{
+            x: x,
+            y: y,
+            radius: this.tileWidth * 0.4,
+            animationTime: 0 // Add animation time for size animation
+        }];
+    }
+    
+    isSnakeBodyAt(gridX, gridY) {
+        return this.snakeBody.some(segment => segment.x === gridX && segment.y === gridY);
+    }
+    
+    updateLevel20Snake() {
+        // Update apple animation
+        if (this.apples.length > 0) {
+            this.apples[0].animationTime += 16; // Assuming 60fps
+        }
+        
+        // Don't move until player has made first input
+        if (!this.hasMoved) { return; }
+        
+        const currentTime = Date.now();
+        if (currentTime - this.lastMoveTime < this.moveInterval) {
+            return;
+        }
+        
+        // Update animation
+        this.updateSnakeAnimation();
+        
+        // Start new animation before updating positions
+        this.startSnakeAnimation();
+        
+        // Update direction
+        this.snakeDirection = this.nextDirection;
+        
+        // Move snake
+        const head = this.snakeBody[0];
+        let newHeadX = head.x;
+        let newHeadY = head.y;
+        
+        switch (this.snakeDirection) {
+            case 'up': newHeadY--; break;
+            case 'down': newHeadY++; break;
+            case 'left': newHeadX--; break;
+            case 'right': newHeadX++; break;
+        }
+        
+        // Check wall collision
+        if (newHeadX < 0 || newHeadX >= this.gridCols || newHeadY < 0 || newHeadY >= this.gridRows) {
+            this.gameOver();
+            return;
+        }
+        
+        // Check self collision
+        if (this.snakeBody.some(segment => segment.x === newHeadX && segment.y === newHeadY)) {
+            this.gameOver();
+            return;
+        }
+        
+        // Add new head
+        this.snakeBody.unshift({ x: newHeadX, y: newHeadY });
+        
+        // Check apple collision
+        if (this.apples.length > 0) {
+            const apple = this.apples[0];
+            if (newHeadX === apple.x && newHeadY === apple.y) {
+                this.score += 100;
+                this.spawnLevel20Apple(false);
+            } else {
+                // Remove tail if no apple eaten
+                this.snakeBody.pop();
+            }
+        } else {
+            // Remove tail if no apple eaten
+            this.snakeBody.pop();
+        }
+        
+        this.lastMoveTime = currentTime;
+        
+        // Check win condition
+        if (this.score >= 2500) { // 25 apples * 100 points
+            this.completeLevel();
+        }
+    }
+    
+    startSnakeAnimation() {
+        // Store current positions as start positions
+        this.snakeAnimationStartPositions = this.snakeBody.map(segment => ({ x: segment.x, y: segment.y }));
+        
+        // Calculate end positions (where snake will be after movement)
+        this.snakeAnimationEndPositions = [];
+        
+        // Head moves to new position
+        const head = this.snakeBody[0];
+        let newHeadX = head.x;
+        let newHeadY = head.y;
+        
+        switch (this.snakeDirection) {
+            case 'up':
+                newHeadY--;
+                break;
+            case 'down':
+                newHeadY++;
+                break;
+            case 'left':
+                newHeadX--;
+                break;
+            case 'right':
+                newHeadX++;
+                break;
+        }
+        
+        this.snakeAnimationEndPositions.push({ x: newHeadX, y: newHeadY });
+        
+        // Body segments follow (each segment moves to where the previous one was)
+        for (let i = 0; i < this.snakeBody.length - 1; i++) {
+            this.snakeAnimationEndPositions.push({ x: this.snakeBody[i].x, y: this.snakeBody[i].y });
+        }
+        
+        // Start animation
+        this.snakeAnimationStartTime = Date.now();
+        this.isSnakeAnimating = true;
+        this.snakeAnimationProgress = 0;
+    }
+    
+    updateSnakeAnimation() {
+        if (!this.isSnakeAnimating) return;
+        
+        const currentTime = Date.now();
+        const elapsed = currentTime - this.snakeAnimationStartTime;
+        this.snakeAnimationProgress = Math.min(elapsed / this.snakeAnimationDuration, 1);
+        
+        if (this.snakeAnimationProgress >= 1) {
+            this.isSnakeAnimating = false;
+        }
+    }
+    
+    getSnakeAnimationPosition(index) {
+        if (!this.isSnakeAnimating || index >= this.snakeAnimationStartPositions.length) {
+            return this.snakeBody[index] || { x: 0, y: 0 };
+        }
+        
+        const start = this.snakeAnimationStartPositions[index];
+        const end = this.snakeAnimationEndPositions[index];
+        
+        // Use ease-out for smooth movement
+        const easeProgress = 1 - Math.pow(1 - this.snakeAnimationProgress, 3);
+        
+        return {
+            x: start.x + (end.x - start.x) * easeProgress,
+            y: start.y + (end.y - start.y) * easeProgress
+        };
+    }
+    
     pauseGame() {
         this.gameState = 'paused';
         this.showScreen('pauseMenu');
@@ -2230,7 +2506,14 @@ class Game {
         
         // Calculate level time for speedrun mode
         if (this.speedrunMode) {
-            const levelTime = Date.now() - this.levelStartTime;
+            let levelTime;
+            if (this.currentLevel === 20 && this.hasMoved) {
+                // Level 20: Timer starts on first move
+                levelTime = Date.now() - this.firstMoveTime;
+            } else {
+                // Other levels: Timer starts when level starts
+                levelTime = Date.now() - this.levelStartTime;
+            }
             this.levelTimes.push({
                 level: this.currentLevel,
                 time: levelTime
@@ -2245,7 +2528,14 @@ class Game {
         document.getElementById('levelCompleteScore').textContent = `Score: ${this.score}`;
         
         // Format time with milliseconds for completion screen
-        const totalMilliseconds = Date.now() - this.startTime;
+        let totalMilliseconds;
+        if (this.currentLevel === 20 && this.hasMoved) {
+            // Level 20: Timer starts on first move
+            totalMilliseconds = Date.now() - this.firstMoveTime;
+        } else {
+            // Other levels: Timer starts when level starts
+            totalMilliseconds = Date.now() - this.startTime;
+        }
         document.getElementById('levelCompleteTime').textContent = `Time: ${formatTime(totalMilliseconds)}`;
         
         // Show speedrun info if in speedrun mode

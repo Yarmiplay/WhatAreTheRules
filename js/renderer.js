@@ -290,6 +290,14 @@ export class Renderer {
     render(gameState) {
         this.clear();
         
+        // Level 20: Special snake rendering
+        if (gameState.currentLevel === 20) {
+            this.drawLevel20Grid();
+            this.drawLevel20Snake(gameState.snakeBody, gameState.gridCols, gameState.gridRows, gameState.tileWidth, gameState.tileHeight, gameState.gameInstance);
+            this.drawLevel20Apples(gameState.apples);
+            return;
+        }
+        
         // Draw safe zones
         this.drawSafeZones(gameState.safeZones, gameState.currentLevel);
         
@@ -321,5 +329,146 @@ export class Renderer {
         const isInvincible = (gameState.currentLevel === 11 || gameState.currentLevel === 13 || gameState.currentLevel === 15 || gameState.currentLevel === 16 || gameState.currentLevel === 18 || gameState.currentLevel === 19) && gameState.powerUpSystem ? 
             gameState.powerUpSystem.isPlayerInvincible() : false;
         this.drawPlayer(gameState.player, gameState.currentLevel, isInvincible);
+    }
+    
+    drawLevel20Grid() {
+        const tileWidth = this.canvas.width / 10;
+        const tileHeight = this.canvas.height / 9;
+        
+        // Draw checkers pattern
+        for (let x = 0; x < 10; x++) {
+            for (let y = 0; y < 9; y++) {
+                const isEven = (x + y) % 2 === 0;
+                this.ctx.fillStyle = isEven ? '#2a2a2a' : '#1a1a1a'; // Black/grey checkers
+                this.ctx.fillRect(x * tileWidth, y * tileHeight, tileWidth, tileHeight);
+            }
+        }
+        
+        // Draw grid lines
+        this.ctx.strokeStyle = '#333';
+        this.ctx.lineWidth = 1;
+        
+        // Draw vertical lines
+        for (let x = 0; x <= 10; x++) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x * tileWidth, 0);
+            this.ctx.lineTo(x * tileWidth, this.canvas.height);
+            this.ctx.stroke();
+        }
+        
+        // Draw horizontal lines
+        for (let y = 0; y <= 9; y++) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y * tileHeight);
+            this.ctx.lineTo(this.canvas.width, y * tileHeight);
+            this.ctx.stroke();
+        }
+    }
+    
+        drawLevel20Snake(snakeBody, gridCols, gridRows, tileWidth, tileHeight, gameInstance = null) {
+        if (!snakeBody || snakeBody.length === 0) return;
+
+        // Draw snake body segments with Bootstrap blue color and connection
+        for (let i = 1; i < snakeBody.length; i++) {
+            // Use animated position if available
+            let segment;
+            if (gameInstance && gameInstance.isSnakeAnimating) {
+                segment = gameInstance.getSnakeAnimationPosition(i);
+            } else {
+                segment = snakeBody[i];
+            }
+            
+            const x = (segment.x * tileWidth) + (tileWidth / 2);
+            const y = (segment.y * tileHeight) + (tileHeight / 2);
+            const radius = Math.min(tileWidth, tileHeight) * 0.35; // 70% of tile
+
+            this.ctx.fillStyle = '#0d6efd'; // Bootstrap blue
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Connect segments with lines for smooth appearance
+            if (i < snakeBody.length - 1) {
+                let nextSegment;
+                if (gameInstance && gameInstance.isSnakeAnimating) {
+                    nextSegment = gameInstance.getSnakeAnimationPosition(i + 1);
+                } else {
+                    nextSegment = snakeBody[i + 1];
+                }
+                
+                const nextX = (nextSegment.x * tileWidth) + (tileWidth / 2);
+                const nextY = (nextSegment.y * tileHeight) + (tileHeight / 2);
+
+                this.ctx.strokeStyle = '#0d6efd';
+                this.ctx.lineWidth = radius * 1.5;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(nextX, nextY);
+                this.ctx.stroke();
+            }
+
+            // Add subtle border
+            this.ctx.strokeStyle = '#0b5ed7'; // Darker Bootstrap blue
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
+        // Draw snake head
+        let head;
+        if (gameInstance && gameInstance.isSnakeAnimating) {
+            head = gameInstance.getSnakeAnimationPosition(0);
+        } else {
+            head = snakeBody[0];
+        }
+        
+        const headX = (head.x * tileWidth) + (tileWidth / 2);
+        const headY = (head.y * tileHeight) + (tileHeight / 2);
+        const headRadius = Math.min(tileWidth, tileHeight) * 0.4; // 80% of tile
+
+        this.ctx.fillStyle = '#0d6efd'; // Bootstrap blue head
+        this.ctx.beginPath();
+        this.ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Connect head to first body segment
+        if (snakeBody.length > 1) {
+            let firstBody;
+            if (gameInstance && gameInstance.isSnakeAnimating) {
+                firstBody = gameInstance.getSnakeAnimationPosition(1);
+            } else {
+                firstBody = snakeBody[1];
+            }
+            
+            const bodyX = (firstBody.x * tileWidth) + (tileWidth / 2);
+            const bodyY = (firstBody.y * tileHeight) + (tileHeight / 2);
+
+            this.ctx.strokeStyle = '#0d6efd';
+            this.ctx.lineWidth = headRadius * 1.2;
+            this.ctx.lineCap = 'round';
+            this.ctx.beginPath();
+            this.ctx.moveTo(headX, headY);
+            this.ctx.lineTo(bodyX, bodyY);
+            this.ctx.stroke();
+        }
+
+        // Head border
+        this.ctx.strokeStyle = '#0b5ed7'; // Darker Bootstrap blue
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+        this.ctx.stroke();
+    }
+    
+    drawLevel20Apples(apples) {
+        for (const apple of apples) {
+            // Draw simple red circle
+            this.ctx.fillStyle = '#ff0000';
+            this.ctx.beginPath();
+            this.ctx.arc(apple.x, apple.y, apple.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
     }
 }

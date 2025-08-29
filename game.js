@@ -319,7 +319,7 @@ class Game {
          this.enemySlowEffect = 0;
          this.powerUpSpawnTime = Date.now();
          this.eatenMovingApples = 0; // Reset counter for Level 11
-         console.log('Level 11 counter reset to 0');
+         //console.log('Level 11 counter reset to 0');
         
         // Create initial safe zone
         this.safeZones.push({
@@ -492,12 +492,12 @@ class Game {
         }
                 
                                          // Check for enemies trapped inside the polygon
-        console.log(`Level 11: Checking ${this.enemies.length} enemies against polygon`);
+        //console.log(`Level 11: Checking ${this.enemies.length} enemies against polygon`);
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            console.log(`Level 11: Enemy ${i} at (${enemy.x}, ${enemy.y})`);
+            //console.log(`Level 11: Enemy ${i} at (${enemy.x}, ${enemy.y})`);
             if (this.isPointInPolygon(enemy.x, enemy.y, polygon)) {
-                console.log(`Level 11: Enemy ${i} is inside polygon!`);
+                //console.log(`Level 11: Enemy ${i} is inside polygon!`);
                 // Convert enemy to apple for all levels
                 const points = this.currentLevel === 9 ? 100 : 50; // Level 9 gives more points
                 this.apples.push({
@@ -518,7 +518,7 @@ class Game {
 
         // Level 11: Check if all enemies are gone
         if (this.currentLevel === 11 && this.enemies.length === 0) {
-            console.log('Level 11: All enemies removed! Completing level...');
+            //console.log('Level 11: All enemies removed! Completing level...');
             this.completeLevel();
             return;
         }

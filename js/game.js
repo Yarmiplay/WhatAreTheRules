@@ -73,7 +73,7 @@ class Game {
         // Level 20: Wall system
         this.walls = [];
         this.wallLifespan = 35; // Walls last for 35 tile movements
-        this.wallSpawnAttempts = 3; // Try 3 times to spawn walls
+        this.wallSpawnAttempts = 15; // Try 15 times to spawn walls
         this.wallMinDistance = 6; // Minimum distance from snake head in tiles
         
         // Renderer
@@ -345,8 +345,8 @@ class Game {
         // Reset level timer for all modes
         this.levelStartTime = Date.now();
         
-        // Reset Level 20 specific properties
-        if (this.currentLevel === 20) {
+        // Reset Level 20 and 21 specific properties
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
             this.hasMoved = false;
         }
         
@@ -358,14 +358,16 @@ class Game {
         // Reset game objects
         this.resetGameObjects();
         
-        // Create initial safe zone
-        this.safeZones.push({
-            type: 'rectangle',
-            x: GAME_CONFIG.INITIAL_SAFE_ZONE.x,
-            y: GAME_CONFIG.INITIAL_SAFE_ZONE.y,
-            width: GAME_CONFIG.INITIAL_SAFE_ZONE.width,
-            height: GAME_CONFIG.INITIAL_SAFE_ZONE.height
-        });
+        // Create initial safe zone (skip for level 21)
+        if (this.currentLevel !== 21) {
+            this.safeZones.push({
+                type: 'rectangle',
+                x: GAME_CONFIG.INITIAL_SAFE_ZONE.x,
+                y: GAME_CONFIG.INITIAL_SAFE_ZONE.y,
+                width: GAME_CONFIG.INITIAL_SAFE_ZONE.width,
+                height: GAME_CONFIG.INITIAL_SAFE_ZONE.height
+            });
+        }
         
         // Level-specific setup
         this.setupLevelSpecificContent();
@@ -451,7 +453,7 @@ class Game {
         } else if (this.currentLevel === 20) {
             this.setupLevel20();
         } else if (this.currentLevel === 21) {
-            this.setupLevel20(); // Level 21 uses the same setup as Level 20
+            this.setupLevel21(); // Level 21 uses similar setup as Level 20 but keeps level 21
         } else {
             this.setupRegularLevel();
         }
@@ -702,6 +704,50 @@ class Game {
         this.isSnakeAnimating = false;
     }
     
+    setupLevel21() {
+        // Level 21 uses the same mechanics as Level 20 but keeps level 21
+        this.gameState = 'playing';
+        this.score = 0;
+        this.levelStartTime = Date.now();
+        this.hasMoved = false; // Track if player has made first move
+        
+        // Grid setup
+        this.gridCols = 10;
+        this.gridRows = 9;
+        this.tileWidth = this.canvas.width / this.gridCols;
+        this.tileHeight = this.canvas.height / this.gridRows;
+        
+        // Snake setup - start at column 2 (more space from walls)
+        const startX = 2;
+        const startY = Math.floor(this.gridRows / 2);
+        
+        this.snakeBody = [
+            { x: startX, y: startY },
+            { x: startX - 1, y: startY },
+            { x: startX - 2, y: startY }
+        ];
+        
+        this.snakeLength = 3; // Initialize snake length
+        this.snakeDirection = 'right';
+        this.nextDirection = 'right';
+        this.lastMoveTime = 0;
+        this.moveInterval = 135;
+        
+        // Level 21: Reset walls
+        this.walls = [];
+        
+        // Spawn first apple at fixed position (3 tiles from right wall)
+        this.spawnLevel20Apple(true);
+        
+        // Initialize animation properties
+        this.snakeAnimationProgress = 0;
+        this.snakeAnimationDuration = 135; // Same as move interval
+        this.snakeAnimationStartTime = 0;
+        this.snakeAnimationStartPositions = [];
+        this.snakeAnimationEndPositions = [];
+        this.isSnakeAnimating = false;
+    }
+    
     setupRegularLevel() {
         // Create enemies based on level
         let enemyCount = Math.min(3 + Math.floor(this.currentLevel / 2), 8);
@@ -888,7 +934,7 @@ class Game {
                          
                          // Level 11, 13, and 15: Check if all enemies are gone
                          if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15) && this.enemies.length === 0) {
-                             console.log(`Level ${this.currentLevel}: All enemies removed! Completing level...`);
+                             //console.log(`Level ${this.currentLevel}: All enemies removed! Completing level...`);
                              this.completeLevel();
                              return;
                          }
@@ -1939,16 +1985,18 @@ class Game {
                     break;
             }
             
-                    this.updatePlayer();
-        this.updateAIPlayer(); // Update AI player for level 6
-        this.updateEnemies();
-        
-        // Level 20 and 21: Update snake
+        // Level 20 and 21: Update snake (skip regular player updates)
         if (this.currentLevel === 20 || this.currentLevel === 21) {
             this.updateLevel20Snake();
-        }
+        } else {
+            // Regular levels: Update player, AI, and enemies
+            this.updatePlayer();
+            this.updateAIPlayer(); // Update AI player for level 6
+            this.updateEnemies();
             this.checkCollisions();
-            this.checkTemporaryZones(); // Check for expired temporary zones
+        }
+        
+        this.checkTemporaryZones(); // Check for expired temporary zones
             
                          // Update power-ups for Level 11, 13, 15, 16, 18, and 19
              if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem) {
@@ -2503,9 +2551,9 @@ class Game {
                 }
             }
             
-            // If we couldn't spawn this wall after 3 attempts, skip it
+            // If we couldn't spawn this wall after 15 attempts, skip it
             if (!wallSpawned) {
-                console.log(`Failed to spawn wall ${i + 1} after ${this.wallSpawnAttempts} attempts`);
+                //console.log(`Failed to spawn wall ${i + 1} after ${this.wallSpawnAttempts} attempts`);
             }
         }
     }
@@ -2589,41 +2637,41 @@ class Game {
         // Add new head
         this.snakeBody.unshift({ x: newHeadX, y: newHeadY });
 
-                        // Check apple collision
-                if (this.apples.length > 0) {
-                    const apple = this.apples[0];
-                    if (newHeadX === apple.x && newHeadY === apple.y) {
-                        this.score += 100;
-                        this.snakeLength++; // Increase snake length
-                        
-                        if (this.currentLevel === 20) {
-                            this.spawnLevel20Apple(false);
-                            
-                            // Check win condition - 25 apples eaten
-                            if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
-                                this.completeLevel();
-                                return;
-                            }
-                        } else if (this.currentLevel === 21) {
-                            const appleSpawned = this.spawnLevel20Apple(false);
-                            
-                            // If apple couldn't spawn, check for win condition
-                            if (!appleSpawned) {
-                                this.completeLevel();
-                                return;
-                            }
-                        }
-                        
-                        // Level 20 and 21: Spawn walls when apple is eaten
-                        this.spawnLevel20Walls();
-                    } else {
-                        // Remove tail if no apple eaten
-                        this.snakeBody.pop();
+        // Check apple collision
+        if (this.apples.length > 0) {
+            const apple = this.apples[0];
+            if (newHeadX === apple.x && newHeadY === apple.y) {
+                this.score += 100;
+                this.snakeLength++; // Increase snake length
+                
+                if (this.currentLevel === 20) {
+                    this.spawnLevel20Apple(false);
+                    
+                    // Check win condition - 25 apples eaten
+                    if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
+                        this.completeLevel();
+                        return;
                     }
-                } else {
-                    // Remove tail if no apple eaten
-                    this.snakeBody.pop();
+                } else if (this.currentLevel === 21) {
+                    const appleSpawned = this.spawnLevel20Apple(false);
+                    
+                    // If apple couldn't spawn, check for win condition
+                    if (!appleSpawned) {
+                        this.completeLevel();
+                        return;
+                    }
                 }
+                
+                // Level 20 and 21: Spawn walls when apple is eaten
+                this.spawnLevel20Walls();
+            } else {
+                // Remove tail if no apple eaten
+                this.snakeBody.pop();
+            }
+        } else {
+            // Remove tail if no apple eaten
+            this.snakeBody.pop();
+        }
         
         // Level 20: Update wall lifespans
         this.updateLevel20Walls();

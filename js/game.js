@@ -2746,9 +2746,9 @@ class Game {
             this.inputBuffer.push(direction);
             
             // Keep buffer size limited
-            if (this.inputBuffer.length > this.maxInputBufferSize) {
-                this.inputBuffer.shift();
-            }
+            //if (this.inputBuffer.length > this.maxInputBufferSize) {
+            //    this.inputBuffer.shift();
+            //}
             console.log(this.inputBuffer);
         }
     }
@@ -2758,7 +2758,7 @@ class Game {
         let lastValidDirection = null;
         
         while (this.inputBuffer.length > 0) {
-            const direction = this.inputBuffer.pop(); // Use pop() instead of shift() for LIFO
+            const direction = this.inputBuffer.shift(); // Use pop() instead of shift() for LIFO
             
             // Check if the direction is valid (not opposite to current direction)
             if ((direction === 'up' && this.snakeDirection !== 'down') ||

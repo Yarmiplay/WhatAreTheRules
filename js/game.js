@@ -90,7 +90,7 @@ class Game {
         
         // Level 20 and 21: Input buffer for better responsiveness
         this.inputBuffer = [];
-                    this.maxInputBufferSize = 5; // Store up to 5 inputs for better buffering
+        this.maxInputBufferSize = 5; // Store up to 5 inputs for better buffering
         
         // Level 20 and 21: Animation properties
         this.isSnakeAnimating = false;
@@ -105,6 +105,10 @@ class Game {
         this.gracePeriodStartTime = 0;
         this.gracePeriodDuration = 100; // 100ms grace period
         this.gracePeriodKillingTile = null; // Store the tile that would kill the snake
+        
+        // Level 20 and 21: Independent input processing
+        this.inputProcessingInterval = null;
+        this.inputProcessingFrequency = 60; // Process inputs 60 times per second (16.67ms intervals)
         
         this.init();
     }
@@ -374,6 +378,12 @@ class Game {
     }
     
     showScreen(screenName) {
+        // Stop independent input processing when leaving game screen for levels 20 and 21
+        if ((screenName === 'mainMenu' || screenName === 'levelSelector' || screenName === 'secretLevelsScreen') && 
+            (this.currentLevel === 20 || this.currentLevel === 21)) {
+            this.stopIndependentInputProcessing();
+        }
+        
         // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -391,6 +401,11 @@ class Game {
     }
     
     startLevel(level) {
+        // Stop independent input processing if switching from levels 20 or 21
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
+            this.stopIndependentInputProcessing();
+        }
+        
         this.currentLevel = level;
         this.score = 0;
         this.gameState = 'playing';
@@ -764,6 +779,9 @@ class Game {
         this.snakeAnimationStartPositions = [];
         this.snakeAnimationEndPositions = [];
         this.isSnakeAnimating = false;
+        
+        // Start independent input processing
+        this.startIndependentInputProcessing();
     }
     
     setupLevel21() {
@@ -808,6 +826,9 @@ class Game {
         this.snakeAnimationStartPositions = [];
         this.snakeAnimationEndPositions = [];
         this.isSnakeAnimating = false;
+        
+        // Start independent input processing
+        this.startIndependentInputProcessing();
     }
     
     setupRegularLevel() {
@@ -2638,17 +2659,14 @@ class Game {
         
         // Don't move until player has made first input
         if (!this.hasMoved) { return; }
+
+        // Update direction
+        this.snakeDirection = this.nextDirection;
         
         const currentTime = Date.now();
         if (currentTime - this.lastMoveTime < this.moveInterval) {
             return;
         }
-
-        // Process all buffered inputs before movement
-        this.processInputBuffer();
-        
-        // Update direction
-        this.snakeDirection = this.nextDirection;
         
         // Start new animation
         this.startSnakeAnimation();
@@ -2778,6 +2796,27 @@ class Game {
         }
     }
     
+    startIndependentInputProcessing() {
+        // Clear any existing interval
+        if (this.inputProcessingInterval) {
+            clearInterval(this.inputProcessingInterval);
+        }
+        
+        // Start processing inputs at high frequency
+        this.inputProcessingInterval = setInterval(() => {
+            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
+                this.processInputBuffer();
+            }
+        }, 1000 / this.inputProcessingFrequency); // Convert frequency to interval
+    }
+    
+    stopIndependentInputProcessing() {
+        if (this.inputProcessingInterval) {
+            clearInterval(this.inputProcessingInterval);
+            this.inputProcessingInterval = null;
+        }
+    }
+    
     checkForKillingTile(x, y) {
         // Check boundary collision
         if (x < 0 || x >= this.gridCols || y < 0 || y >= this.gridRows) {
@@ -2866,6 +2905,10 @@ class Game {
     }
     
     pauseGame() {
+        // Stop independent input processing for levels 20 and 21
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
+            this.stopIndependentInputProcessing();
+        }
         this.gameState = 'paused';
         this.showScreen('pauseMenu');
     }
@@ -2873,6 +2916,10 @@ class Game {
     resumeGame() {
         this.gameState = 'playing';
         this.showScreen('gameScreen');
+        // Restart independent input processing for levels 20 and 21
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
+            this.startIndependentInputProcessing();
+        }
         this.gameLoop();
     }
     
@@ -2898,6 +2945,9 @@ class Game {
             this.gracePeriodActive = false;
             this.gracePeriodStartTime = 0;
             this.gracePeriodKillingTile = null;
+            // Restart independent input processing
+            this.stopIndependentInputProcessing();
+            this.startIndependentInputProcessing();
         } else {
             // For other levels, reset the level start time
             this.levelStartTime = Date.now();
@@ -2910,6 +2960,10 @@ class Game {
     }
     
     gameOver() {
+        // Stop independent input processing for levels 20 and 21
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
+            this.stopIndependentInputProcessing();
+        }
         this.gameState = 'gameOver';
         document.getElementById('finalScore').textContent = `Score: ${this.score}`;
         this.showScreen('gameOverScreen');
@@ -3015,6 +3069,11 @@ class Game {
                 time: levelTime
             });
             this.totalSpeedrunTime += levelTime;
+        }
+        
+        // Stop independent input processing for levels 20 and 21
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
+            this.stopIndependentInputProcessing();
         }
         
         // Show level completion screen

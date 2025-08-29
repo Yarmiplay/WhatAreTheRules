@@ -2758,7 +2758,7 @@ class Game {
         let lastValidDirection = null;
         
         while (this.inputBuffer.length > 0) {
-            const direction = this.inputBuffer.shift(); // Use pop() instead of shift() for LIFO
+            const direction = this.inputBuffer.shift(); // FIFO is what works
             
             // Check if the direction is valid (not opposite to current direction)
             if ((direction === 'up' && this.snakeDirection !== 'down') ||

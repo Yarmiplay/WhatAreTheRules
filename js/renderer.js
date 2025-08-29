@@ -290,8 +290,8 @@ export class Renderer {
     render(gameState) {
         this.clear();
         
-        // Level 20: Special snake rendering
-        if (gameState.currentLevel === 20) {
+        // Level 20 and 21: Special snake rendering
+        if (gameState.currentLevel === 20 || gameState.currentLevel === 21) {
             this.drawLevel20Grid();
             this.drawLevel20Snake(gameState.snakeBody, gameState.gridCols, gameState.gridRows, gameState.tileWidth, gameState.tileHeight, gameState.gameInstance);
             this.drawLevel20Apples(gameState.apples, gameState.tileWidth, gameState.tileHeight);

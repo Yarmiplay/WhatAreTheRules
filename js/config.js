@@ -52,7 +52,8 @@ export const LEVEL_TITLES = {
     17: "Limited",
     18: "Limited Power",
     19: "Shrinking Power",
-    20: "Snake"
+    20: "Snake",
+    21: "Tail Hug"
 };
 
 export const POWER_UP_TYPES = {

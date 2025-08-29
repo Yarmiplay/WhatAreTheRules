@@ -117,6 +117,7 @@ class Game {
         // Add other event listeners...
         this.setupGameEventListeners();
         this.setupInputEventListeners();
+        this.setupSecretLevelsEventListeners();
     }
     
     setupGameEventListeners() {
@@ -144,13 +145,13 @@ class Game {
                 this.pauseGame();
             }
             
-            // Level 20: Start timer on first move
-            if (this.currentLevel === 20 && !this.hasMoved && 
-                (e.key === 'w' || e.key === 's' || e.key === 'a' || e.key === 'd' || 
-                 e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-                this.hasMoved = true;
-                this.levelStartTime = Date.now();
-            }
+                    // Level 20 and 21: Start timer on first move
+        if ((this.currentLevel === 20 || this.currentLevel === 21) && !this.hasMoved && 
+            (e.key === 'w' || e.key === 's' || e.key === 'a' || e.key === 'd' || 
+             e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            this.hasMoved = true;
+            this.levelStartTime = Date.now();
+        }
             
             // Start drawing with spacebar when in safe zone
             if (e.key === ' ' && this.gameState === 'playing' && this.player.isInSafeZone && !this.player.isDrawing) {
@@ -185,6 +186,25 @@ class Game {
                 this.stopDrawing();
             }
         });
+    }
+    
+    setupSecretLevelsEventListeners() {
+        // Secret levels button
+        const secretLevelsButton = document.getElementById('secretLevelsButton');
+        if (secretLevelsButton) {
+            secretLevelsButton.addEventListener('click', () => {
+                this.showScreen('secretLevelsScreen');
+                this.createSecretLevelSelector();
+            });
+        }
+        
+        // Back to level selector from secret levels
+        const backToLevelSelector = document.getElementById('backToLevelSelector');
+        if (backToLevelSelector) {
+            backToLevelSelector.addEventListener('click', () => {
+                this.showScreen('levelSelector');
+            });
+        }
     }
     
     handleButtonClick(buttonId) {
@@ -257,6 +277,46 @@ class Game {
             
             levelGrid.appendChild(levelButton);
         }
+        
+        // Show secret levels button only if Level 20 is completed
+        const secretLevelsButton = document.getElementById('secretLevelsButton');
+        if (this.completedLevels.has(20)) {
+            secretLevelsButton.style.display = 'block';
+        } else {
+            secretLevelsButton.style.display = 'none';
+        }
+    }
+    
+    createSecretLevelSelector() {
+        const secretLevelGrid = document.getElementById('secretLevelGrid');
+        secretLevelGrid.innerHTML = '';
+        
+        // Add Level 21
+        const levelButton = document.createElement('button');
+        levelButton.className = 'level-button';
+        
+        // Create level number and title
+        const levelNumber = document.createElement('div');
+        levelNumber.className = 'level-number';
+        levelNumber.textContent = '21';
+        
+        const levelTitle = document.createElement('div');
+        levelTitle.className = 'level-title';
+        levelTitle.textContent = this.levelTitles[21] || 'Level 21';
+        
+        levelButton.appendChild(levelNumber);
+        levelButton.appendChild(levelTitle);
+        
+        // Level 21 is always unlocked if Level 20 is completed
+        if (this.completedLevels.has(21)) {
+            levelButton.classList.add('completed');
+        }
+        
+        levelButton.addEventListener('click', () => {
+            this.startLevel(21);
+        });
+        
+        secretLevelGrid.appendChild(levelButton);
     }
     
     showScreen(screenName) {
@@ -271,6 +331,8 @@ class Game {
         
         if (screenName === 'levelSelector') {
             this.createLevelSelector();
+        } else if (screenName === 'secretLevelsScreen') {
+            this.createSecretLevelSelector();
         }
     }
     
@@ -388,6 +450,8 @@ class Game {
             this.setupLevel19();
         } else if (this.currentLevel === 20) {
             this.setupLevel20();
+        } else if (this.currentLevel === 21) {
+            this.setupLevel20(); // Level 21 uses the same setup as Level 20
         } else {
             this.setupRegularLevel();
         }
@@ -1036,8 +1100,17 @@ class Game {
                     this.snakeLength++; // Increase snake length
                     this.spawnLevel20Apple(false); // Spawn new apple
                     
-                    // Check win condition (25 apples eaten)
+                    // Check win condition - 25 apples eaten
                     if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
+                        this.completeLevel();
+                        return;
+                    }
+                } else if (this.currentLevel === 21) {
+                    this.snakeLength++; // Increase snake length
+                    const appleSpawned = this.spawnLevel20Apple(false); // Spawn new apple
+                    
+                    // Check win condition - when no apple can spawn
+                    if (!appleSpawned || !this.canSpawnLevel20Apple()) {
                         this.completeLevel();
                         return;
                     }
@@ -1668,12 +1741,12 @@ class Game {
         
         // Update timer display
         let totalMilliseconds;
-        if (this.currentLevel === 20) {
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
             if (this.hasMoved) {
-                // Level 20: Timer starts on first move
+                // Level 20 and 21: Timer starts on first move
                 totalMilliseconds = Date.now() - this.levelStartTime;
             } else {
-                // Level 20: Timer shows 0:00.00 until first move
+                // Level 20 and 21: Timer shows 0:00.00 until first move
                 totalMilliseconds = 0;
             }
         } else {
@@ -1688,6 +1761,9 @@ class Game {
             // Level 20: Show apples eaten progress
             const applesEaten = this.snakeLength - 3; // Subtract initial length
             completionPercent = (applesEaten / 25) * 100; // 25 apples to win
+        } else if (this.currentLevel === 21) {
+            // Level 21: Calculate completion based on open tiles
+            completionPercent = this.calculateLevel21Completion();
         } else {
             completionPercent = this.calculateBoardCompletion();
         }
@@ -1719,6 +1795,34 @@ class Game {
         return (safeZoneArea / totalBoardArea) * 100;
     }
     
+    calculateLevel21Completion() {
+        const totalTiles = 90; // 10x9 grid = 90 tiles
+        let openTiles = 0;
+        
+        // Count open tiles (tiles not occupied by snake body, walls, or apples)
+        for (let x = 0; x < this.gridCols; x++) {
+            for (let y = 0; y < this.gridRows; y++) {
+                // Check if tile is occupied by snake body
+                const isSnakeBody = this.snakeBody.some(segment => segment.x === x && segment.y === y);
+                
+                // Check if tile is occupied by wall
+                const isWall = this.walls.some(wall => wall.x === x && wall.y === y);
+                
+                // Check if tile has apple (apples count as open tiles)
+                const hasApple = this.apples.some(apple => apple.x === x && apple.y === y);
+                
+                // Tile is open if it's not snake body and not wall (apples count as open)
+                if (!isSnakeBody && !isWall) {
+                    openTiles++;
+                }
+            }
+        }
+        
+        // Calculate completion as 100% - (open tiles / total tiles * 100)
+        const completionPercent = 100 - (openTiles / totalTiles * 100);
+        return Math.max(0, Math.min(100, completionPercent)); // Clamp between 0 and 100
+    }
+    
     isPositionInSafeZone(x, y) {
         for (const zone of this.safeZones) {
             if (zone.type === 'polygon') {
@@ -1739,7 +1843,7 @@ class Game {
     gameLoop() {
         if (this.gameState === 'playing') {
             // Update timer (counting up)
-            if (this.currentLevel === 20 && this.hasMoved) {
+            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
                 this.levelTime = Math.floor((Date.now() - this.levelStartTime) / 1000);
             } else {
                 this.levelTime = Math.floor((Date.now() - this.levelStartTime) / 1000);
@@ -1839,8 +1943,8 @@ class Game {
         this.updateAIPlayer(); // Update AI player for level 6
         this.updateEnemies();
         
-        // Level 20: Update snake
-        if (this.currentLevel === 20) {
+        // Level 20 and 21: Update snake
+        if (this.currentLevel === 20 || this.currentLevel === 21) {
             this.updateLevel20Snake();
         }
             this.checkCollisions();
@@ -2314,6 +2418,8 @@ class Game {
     
     spawnLevel20Apple(isInitialSpawn = false) {
         let x, y;
+        let attempts = 0;
+        const maxAttempts = 100; // Prevent infinite loop
         
         if (isInitialSpawn) {
             // Fixed position: 3 tiles from right wall
@@ -2324,7 +2430,14 @@ class Game {
             do {
                 x = Math.floor(Math.random() * this.gridCols);
                 y = Math.floor(Math.random() * this.gridRows);
-            } while (this.snakeBody.some(segment => segment.x === x && segment.y === y));
+                attempts++;
+            } while ((this.snakeBody.some(segment => segment.x === x && segment.y === y) || 
+                     this.walls.some(wall => wall.x === x && wall.y === y)) && attempts < maxAttempts);
+            
+            // If we couldn't find a valid position, return false
+            if (attempts >= maxAttempts) {
+                return false;
+            }
         }
         
         this.apples = [{
@@ -2333,6 +2446,24 @@ class Game {
             radius: this.tileWidth * 0.4,
             animationTime: 0 // Add animation time for size animation
         }];
+        
+        return true;
+    }
+    
+    canSpawnLevel20Apple() {
+        // Check if there's any valid position to spawn an apple
+        for (let x = 0; x < this.gridCols; x++) {
+            for (let y = 0; y < this.gridRows; y++) {
+                // Check if position is not occupied by snake body or walls
+                const occupiedBySnake = this.snakeBody.some(segment => segment.x === x && segment.y === y);
+                const occupiedByWall = this.walls.some(wall => wall.x === x && wall.y === y);
+                
+                if (!occupiedBySnake && !occupiedByWall) {
+                    return true; // Found a valid position
+                }
+            }
+        }
+        return false; // No valid position found
     }
     
     spawnLevel20Walls() {
@@ -2458,29 +2589,41 @@ class Game {
         // Add new head
         this.snakeBody.unshift({ x: newHeadX, y: newHeadY });
 
-        // Check apple collision
-        if (this.apples.length > 0) {
-            const apple = this.apples[0];
-            if (newHeadX === apple.x && newHeadY === apple.y) {
-                this.score += 100;
-                this.snakeLength++; // Increase snake length
-                this.spawnLevel20Apple(false);
-                
-                // Level 20: Spawn walls when apple is eaten
-                this.spawnLevel20Walls();
-            } else {
-                // Remove tail if no apple eaten
-                this.snakeBody.pop();
-            }
-        } else {
-            // Remove tail if no apple eaten
-            this.snakeBody.pop();
-        }
-        
-        // Check win condition
-        if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
-            this.completeLevel();
-        }
+                        // Check apple collision
+                if (this.apples.length > 0) {
+                    const apple = this.apples[0];
+                    if (newHeadX === apple.x && newHeadY === apple.y) {
+                        this.score += 100;
+                        this.snakeLength++; // Increase snake length
+                        
+                        if (this.currentLevel === 20) {
+                            this.spawnLevel20Apple(false);
+                            
+                            // Check win condition - 25 apples eaten
+                            if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
+                                this.completeLevel();
+                                return;
+                            }
+                        } else if (this.currentLevel === 21) {
+                            const appleSpawned = this.spawnLevel20Apple(false);
+                            
+                            // If apple couldn't spawn, check for win condition
+                            if (!appleSpawned) {
+                                this.completeLevel();
+                                return;
+                            }
+                        }
+                        
+                        // Level 20 and 21: Spawn walls when apple is eaten
+                        this.spawnLevel20Walls();
+                    } else {
+                        // Remove tail if no apple eaten
+                        this.snakeBody.pop();
+                    }
+                } else {
+                    // Remove tail if no apple eaten
+                    this.snakeBody.pop();
+                }
         
         // Level 20: Update wall lifespans
         this.updateLevel20Walls();
@@ -2613,8 +2756,8 @@ class Game {
         // Calculate level time for speedrun mode
         if (this.speedrunMode) {
             let levelTime;
-            if (this.currentLevel === 20 && this.hasMoved) {
-                // Level 20: Timer starts on first move
+            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
+                // Level 20 and 21: Timer starts on first move
                 levelTime = Date.now() - this.levelStartTime;
             } else {
                 // Other levels: Timer starts when level starts
@@ -2634,8 +2777,8 @@ class Game {
         
         // Format time with milliseconds for completion screen
         let totalMilliseconds;
-        if (this.currentLevel === 20 && this.hasMoved) {
-            // Level 20: Timer starts on first move
+        if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
+            // Level 20 and 21: Timer starts on first move
             totalMilliseconds = Date.now() - this.levelStartTime;
         } else {
             // Other levels: Timer starts when level starts
@@ -2688,8 +2831,8 @@ class Game {
         // Calculate level time for speedrun mode
         if (this.speedrunMode) {
             let levelTime;
-            if (this.currentLevel === 20 && this.hasMoved) {
-                // Level 20: Timer starts on first move
+            if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
+                // Level 20 and 21: Timer starts on first move
                 levelTime = Date.now() - this.levelStartTime;
             } else {
                 // Other levels: Timer starts when level starts
@@ -2710,8 +2853,8 @@ class Game {
         
         // Format time with milliseconds for completion screen
         let totalMilliseconds;
-        if (this.currentLevel === 20 && this.hasMoved) {
-            // Level 20: Timer starts on first move
+        if ((this.currentLevel === 20 || this.currentLevel === 21) && this.hasMoved) {
+            // Level 20 and 21: Timer starts on first move
             totalMilliseconds = Date.now() - this.levelStartTime;
         } else {
             // Other levels: Timer starts when level starts

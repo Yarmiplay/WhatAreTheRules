@@ -463,12 +463,33 @@ export class Renderer {
     }
     
     drawLevel20Apples(apples) {
-        for (const apple of apples) {
-            // Draw simple red circle
-            this.ctx.fillStyle = '#ff0000';
-            this.ctx.beginPath();
-            this.ctx.arc(apple.x, apple.y, apple.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
+        if (!apples || apples.length === 0) return;
+        
+        const apple = apples[0];
+        const centerX = (apple.x * this.tileWidth) + (this.tileWidth / 2);
+        const centerY = (apple.y * this.tileHeight) + (this.tileHeight / 2);
+        
+        // Calculate size animation (grow and shrink)
+        const animationSpeed = 0.003; // Speed of size change
+        const sizeVariation = 0.1; // How much the size varies (10%)
+        const baseRadius = apple.radius;
+        const animatedRadius = baseRadius * (1 + sizeVariation * Math.sin(apple.animationTime * animationSpeed));
+        
+        // Draw apple with gradient for prettier appearance
+        const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, animatedRadius);
+        gradient.addColorStop(0, '#ff6b6b'); // Bright red center
+        gradient.addColorStop(0.7, '#ff4757'); // Medium red
+        gradient.addColorStop(1, '#ff3838'); // Darker red edge
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, animatedRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Add a subtle highlight
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(centerX - animatedRadius * 0.3, centerY - animatedRadius * 0.3, animatedRadius * 0.4, 0, Math.PI * 2);
+        this.ctx.fill();
     }
 }

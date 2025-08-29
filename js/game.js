@@ -92,6 +92,10 @@ class Game {
         this.pendingDirection = null; // Store the next direction to turn to
         this.lastProcessedDirection = null; // Track last processed direction to prevent duplicates
         
+        // Level 20 and 21: Input buffer system
+        this.inputBuffer = [];
+        this.maxInputBufferSize = 5;
+        
         // Level 20 and 21: Animation properties
         this.isSnakeAnimating = false;
         this.snakeAnimationProgress = 0;
@@ -184,7 +188,7 @@ class Game {
                 this.pauseGame();
             }
             
-                    // Level 20 and 21: Direct input handling
+                                // Level 20 and 21: Input buffer handling
             if ((this.currentLevel === 20 || this.currentLevel === 21) && this.gameState === 'playing') {
                 let direction = null;
                 
@@ -214,8 +218,8 @@ class Game {
                         this.levelStartTime = Date.now();
                     }
                     
-                    // Store the direction for processing in the movement loop
-                    this.pendingDirection = direction;
+                    // Add to input buffer (FIFO)
+                    this.addToInputBuffer(direction);
                 }
             }
             
@@ -252,6 +256,16 @@ class Game {
                 //this.stopDrawing();
             }
         });
+    }
+    
+    addToInputBuffer(direction) {
+        // Always add the direction to the buffer
+        this.inputBuffer.push(direction);
+        
+        // Keep buffer size limited
+        if (this.inputBuffer.length > this.maxInputBufferSize) {
+            this.inputBuffer.shift(); // Remove oldest input (FIFO)
+        }
     }
     
     setupSecretLevelsEventListeners() {
@@ -483,6 +497,8 @@ class Game {
         
         // Level 20 and 21: Reset input buffer
         this.inputBuffer = [];
+        this.pendingDirection = null;
+        this.lastProcessedDirection = null;
         
         // Level 20 and 21: Reset grace period
         this.gracePeriodActive = false;
@@ -2694,16 +2710,19 @@ class Game {
         // Don't move until player has made first input
         if (!this.hasMoved) { return; }
 
-        // Process pending direction input
-        if (this.pendingDirection && this.pendingDirection !== this.lastProcessedDirection) {
+        // Process input buffer
+        if (this.inputBuffer.length > 0) {
+            const nextInput = this.inputBuffer.shift(); // Get next input (FIFO)
+            
             // Check if the direction is valid (not opposite to current direction)
-            if ((this.pendingDirection === 'up' && this.snakeDirection !== 'down') ||
-                (this.pendingDirection === 'down' && this.snakeDirection !== 'up') ||
-                (this.pendingDirection === 'left' && this.snakeDirection !== 'right') ||
-                (this.pendingDirection === 'right' && this.snakeDirection !== 'left')) {
-                
-                this.nextDirection = this.pendingDirection;
-                this.lastProcessedDirection = this.pendingDirection;
+            const isValidDirection = (nextInput === 'up' && this.snakeDirection !== 'down') ||
+                                   (nextInput === 'down' && this.snakeDirection !== 'up') ||
+                                   (nextInput === 'left' && this.snakeDirection !== 'right') ||
+                                   (nextInput === 'right' && this.snakeDirection !== 'left');
+            
+            if (isValidDirection) {
+                this.nextDirection = nextInput;
+                this.lastProcessedDirection = nextInput;
             }
         }
 

@@ -62,8 +62,8 @@ function mergeLevel8Style(newZone, currentLevel, safeZones, enemies, apples) {
                 lifespan: 8000, // 8 seconds
                 killPlayerOnExpire: true // Kill player if this zone expires
             }];
-        } else if (currentLevel === 17) {
-            // Level 17: Create a merged polygon and kill diagonals
+        } else if (currentLevel === 16 || currentLevel === 17 || currentLevel === 18 || currentLevel === 19) {
+            // Level 16, 17, 18, 19: Create a merged polygon and kill diagonals
             const mergedPoints = [...existingPolygonZone.points, ...newZone.points];
             
             // Create convex hull to create a proper merged polygon

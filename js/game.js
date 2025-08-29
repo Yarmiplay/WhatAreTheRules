@@ -138,6 +138,14 @@ class Game {
                 this.pauseGame();
             }
             
+            // Level 20: Start timer on first move
+            if (this.currentLevel === 20 && !this.hasMoved && 
+                (e.key === 'w' || e.key === 's' || e.key === 'a' || e.key === 'd' || 
+                 e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                this.hasMoved = true;
+                this.levelStartTime = Date.now();
+            }
+            
             // Start drawing with spacebar when in safe zone
             if (e.key === ' ' && this.gameState === 'playing' && this.player.isInSafeZone && !this.player.isDrawing) {
                 this.startDrawing();
@@ -597,6 +605,7 @@ class Game {
             { x: startX - 2, y: startY }
         ];
         
+        this.snakeLength = 3; // Initialize snake length
         this.snakeDirection = 'right';
         this.nextDirection = 'right';
         this.lastMoveTime = 0;
@@ -1641,10 +1650,10 @@ class Game {
         let totalMilliseconds;
         if (this.currentLevel === 20 && this.hasMoved) {
             // Level 20: Timer starts on first move
-            totalMilliseconds = Date.now() - this.firstMoveTime;
+            totalMilliseconds = Date.now() - this.levelStartTime;
         } else {
             // Other levels: Timer starts when level starts
-            totalMilliseconds = Date.now() - this.startTime;
+            totalMilliseconds = Date.now() - this.levelStartTime;
         }
         document.getElementById('timerDisplay').textContent = `Time: ${formatTime(totalMilliseconds)}`;
         
@@ -1705,7 +1714,11 @@ class Game {
     gameLoop() {
         if (this.gameState === 'playing') {
             // Update timer (counting up)
-            this.levelTime = Math.floor((Date.now() - this.startTime) / 1000);
+            if (this.currentLevel === 20 && this.hasMoved) {
+                this.levelTime = Math.floor((Date.now() - this.levelStartTime) / 1000);
+            } else {
+                this.levelTime = Math.floor((Date.now() - this.levelStartTime) / 1000);
+            }
             
             // Check for level completion using switch case
             switch (this.currentLevel) {
@@ -2368,7 +2381,7 @@ class Game {
         this.lastMoveTime = currentTime;
         
         // Check win condition
-        if (this.score >= 2500) { // 25 apples * 100 points
+        if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
             this.completeLevel();
         }
     }
@@ -2457,6 +2470,13 @@ class Game {
         this.gameState = 'playing';
         this.showScreen('gameScreen');
         this.score = 0; // Reset score when restarting
+        
+        // Reset timer for Level 20
+        if (this.currentLevel === 20) {
+            this.hasMoved = false;
+            this.levelStartTime = Date.now();
+        }
+        
         this.initializeLevel();
         this.gameLoop();
     }
@@ -2509,7 +2529,7 @@ class Game {
             let levelTime;
             if (this.currentLevel === 20 && this.hasMoved) {
                 // Level 20: Timer starts on first move
-                levelTime = Date.now() - this.firstMoveTime;
+                levelTime = Date.now() - this.levelStartTime;
             } else {
                 // Other levels: Timer starts when level starts
                 levelTime = Date.now() - this.levelStartTime;
@@ -2531,10 +2551,10 @@ class Game {
         let totalMilliseconds;
         if (this.currentLevel === 20 && this.hasMoved) {
             // Level 20: Timer starts on first move
-            totalMilliseconds = Date.now() - this.firstMoveTime;
+            totalMilliseconds = Date.now() - this.levelStartTime;
         } else {
             // Other levels: Timer starts when level starts
-            totalMilliseconds = Date.now() - this.startTime;
+            totalMilliseconds = Date.now() - this.levelStartTime;
         }
         document.getElementById('levelCompleteTime').textContent = `Time: ${formatTime(totalMilliseconds)}`;
         

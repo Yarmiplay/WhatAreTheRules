@@ -294,7 +294,7 @@ export class Renderer {
         if (gameState.currentLevel === 20) {
             this.drawLevel20Grid();
             this.drawLevel20Snake(gameState.snakeBody, gameState.gridCols, gameState.gridRows, gameState.tileWidth, gameState.tileHeight, gameState.gameInstance);
-            this.drawLevel20Apples(gameState.apples);
+            this.drawLevel20Apples(gameState.apples, gameState.tileWidth, gameState.tileHeight);
             return;
         }
         
@@ -462,18 +462,20 @@ export class Renderer {
         this.ctx.stroke();
     }
     
-    drawLevel20Apples(apples) {
+    drawLevel20Apples(apples, tileWidth, tileHeight) {
         if (!apples || apples.length === 0) return;
         
         const apple = apples[0];
-        const centerX = (apple.x * this.tileWidth) + (this.tileWidth / 2);
-        const centerY = (apple.y * this.tileHeight) + (this.tileHeight / 2);
+        const centerX = (apple.x * tileWidth) + (tileWidth / 2);
+        const centerY = (apple.y * tileHeight) + (tileHeight / 2);
         
         // Calculate size animation (grow and shrink)
         const animationSpeed = 0.003; // Speed of size change
         const sizeVariation = 0.1; // How much the size varies (10%)
         const baseRadius = apple.radius;
-        const animatedRadius = baseRadius * (1 + sizeVariation * Math.sin(apple.animationTime * animationSpeed));
+        // Ensure animationTime exists and is a number
+        const animationTime = apple.animationTime || 0;
+        const animatedRadius = baseRadius * (1 + sizeVariation * Math.sin(animationTime * animationSpeed));
         
         // Draw apple with gradient for prettier appearance
         const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, animatedRadius);

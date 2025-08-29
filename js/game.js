@@ -240,13 +240,13 @@ class Game {
         
         this.canvas.addEventListener('mousedown', (e) => {
             if (this.gameState === 'playing') {
-                this.startDrawing();
+                //this.startDrawing();
             }
         });
         
         this.canvas.addEventListener('mouseup', (e) => {
             if (this.gameState === 'playing') {
-                this.stopDrawing();
+                //this.stopDrawing();
             }
         });
     }

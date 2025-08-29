@@ -119,6 +119,9 @@ class Game {
         this.frameInterval = 1000 / this.targetFPS; // 10ms between frames
         this.lastFrameTime = 0;
         
+        // Level 15: Anti-stuck system properties
+
+        
         this.init();
     }
     
@@ -494,8 +497,7 @@ class Game {
         this.hasStartedMoving = false;
         this.lastDirection = 'none';
         
-        // Level 15: Reset enemy movement tracking
-        this.enemyLastPositions = new Map();
+
         
         // Reset timer
         this.levelTime = 0;
@@ -596,8 +598,7 @@ class Game {
     }
     
     setupLevel15() {
-        // Create enemies like level 11 (3 enemies)
-        this.createEnemies(3);
+        this.createEnemies(7);
     }
     
     setupLevel16() {
@@ -859,6 +860,7 @@ class Game {
     }
     
     createEnemies(count) {
+        
         for (let i = 0; i < count; i++) {
             const position = getRandomPosition(this.canvas, this.safeZones, (x, y) => this.isPositionInSafeZone(x, y));
             this.enemies.push({
@@ -872,6 +874,7 @@ class Game {
     }
     
     createAIEnemies(count) {
+        
         for (let i = 0; i < count; i++) {
             const position = getRandomPosition(this.canvas, this.safeZones, (x, y) => this.isPositionInSafeZone(x, y));
             this.enemies.push({
@@ -887,6 +890,7 @@ class Game {
     }
     
     createFixedPositionEnemies(count) {
+        
         const fixedPositions = [
             { x: 150, y: 150 },
             { x: 650, y: 150 },
@@ -911,6 +915,7 @@ class Game {
     }
     
     createRandomPositionEnemies(count) {
+        
         for (let i = 0; i < count; i++) {
             const position = getRandomPosition(this.canvas, this.safeZones, (x, y) => this.isPositionInSafeZone(x, y));
             this.enemies.push({
@@ -1455,8 +1460,8 @@ class Game {
                     lineEnd.x, lineEnd.y
                 );
                 
-                                 // Only check if player center is very close to the line (within 2 pixels)
-                 if (distance < 2) {
+                // Only check if player center is very close to the line (within 2 pixels)
+                if (distance < 2) {
                      // Level 11, 13, 15, 16, 18, and 19: Check if player is invincible
                      if ((this.currentLevel === 11 || this.currentLevel === 13 || this.currentLevel === 15 || this.currentLevel === 16 || this.currentLevel === 18 || this.currentLevel === 19) && this.powerUpSystem && this.powerUpSystem.isPlayerInvincible()) {
                          // Player is invincible, ignore collision
@@ -1477,34 +1482,7 @@ class Game {
                 continue;
             }
             
-            // Level 15: Track enemy position to prevent staying still
-            if (this.currentLevel === 15) {
-                const enemyId = this.enemies.indexOf(enemy);
-                const currentPos = { x: enemy.x, y: enemy.y };
-                
-                if (!this.enemyLastPositions.has(enemyId)) {
-                    this.enemyLastPositions.set(enemyId, { pos: currentPos, frames: 0 });
-                } else {
-                    const lastData = this.enemyLastPositions.get(enemyId);
-                    const distance = Math.sqrt(
-                        Math.pow(currentPos.x - lastData.pos.x, 2) + 
-                        Math.pow(currentPos.y - lastData.pos.y, 2)
-                    );
-                    
-                    if (distance < 1) { // Enemy hasn't moved significantly
-                        lastData.frames++;
-                        if (lastData.frames >= 2) { // Force movement after 2 frames
-                            enemy.x += Math.cos(enemy.wanderAngle) * enemy.speed * 0.5;
-                            enemy.y += Math.sin(enemy.wanderAngle) * enemy.speed * 0.5;
-                            enemy.wanderAngle = Math.random() * Math.PI * 2;
-                            lastData.frames = 0;
-                        }
-                    } else {
-                        lastData.frames = 0;
-                    }
-                    lastData.pos = { x: enemy.x, y: enemy.y };
-                }
-            }
+
             const dx = this.player.x - enemy.x;
             const dy = this.player.y - enemy.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1665,9 +1643,7 @@ class Game {
                          enemy.x = newX;
                          enemy.y = newY;
                      } else {
-                         // Level 15: Force movement even if blocked
-                         enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
-                         enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
+                         // Level 15: Let the anti-stuck system handle blocked movement
                          enemy.wanderAngle = Math.random() * Math.PI * 2;
                      }
                  }
@@ -1689,11 +1665,7 @@ class Game {
                          enemy.x = newX;
                          enemy.y = newY;
                      } else {
-                         // Level 15: Force movement even if blocked
-                         if (this.currentLevel === 15) {
-                             enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
-                             enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
-                         }
+                         // Level 15: Let the anti-stuck system handle blocked movement
                          enemy.wanderAngle = Math.random() * Math.PI * 2;
                      }
                  }
@@ -1711,11 +1683,7 @@ class Game {
                          enemy.x = newX;
                          enemy.y = newY;
                      } else {
-                         // Level 15: Force movement even if blocked
-                         if (this.currentLevel === 15) {
-                             enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
-                             enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
-                         }
+                         // Level 15: Let the anti-stuck system handle blocked movement
                          enemy.wanderAngle = Math.random() * Math.PI * 2;
                      }
                  }
@@ -1746,11 +1714,7 @@ class Game {
                      enemy.x = newX;
                      enemy.y = newY;
                  } else {
-                     // Level 15: Force movement even if blocked
-                     if (this.currentLevel === 15) {
-                         enemy.x += Math.cos(enemy.wanderAngle) * enemySpeed * 0.5;
-                         enemy.y += Math.sin(enemy.wanderAngle) * enemySpeed * 0.5;
-                     }
+                     // Level 15: Let the anti-stuck system handle blocked movement
                      enemy.wanderAngle = Math.random() * Math.PI * 2;
                  }
              }

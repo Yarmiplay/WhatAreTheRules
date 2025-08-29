@@ -70,6 +70,12 @@ class Game {
         // Power-up system for level 11
         this.powerUpSystem = null;
         
+        // Level 20: Wall system
+        this.walls = [];
+        this.wallLifespan = 35; // Walls last for 35 tile movements
+        this.wallSpawnAttempts = 3; // Try 3 times to spawn walls
+        this.wallMinDistance = 6; // Minimum distance from snake head in tiles
+        
         // Renderer
         this.renderer = new Renderer(this.canvas);
         
@@ -330,6 +336,9 @@ class Game {
         this.enemies = [];
         this.apples = [];
         this.lineSegments = [];
+        
+        // Level 20: Reset walls
+        this.walls = [];
         
         // Level 15: Reset enemy movement tracking
         this.enemyLastPositions = new Map();
@@ -613,6 +622,9 @@ class Game {
         this.nextDirection = 'right';
         this.lastMoveTime = 0;
         this.moveInterval = 135;
+        
+        // Level 20: Reset walls
+        this.walls = [];
         
         // Spawn first apple at fixed position (3 tiles from right wall)
         this.spawnLevel20Apple(true);
@@ -1855,6 +1867,7 @@ class Game {
                 gridRows: this.gridRows,
                 tileWidth: this.tileWidth,
                 tileHeight: this.tileHeight,
+                walls: this.walls,
                 gameInstance: this // Pass game instance for animation
             });
             
@@ -2322,6 +2335,50 @@ class Game {
         }];
     }
     
+    spawnLevel20Walls() {
+        // Spawn 2 walls
+        for (let i = 0; i < 2; i++) {
+            let wallSpawned = false;
+            
+            // Try to spawn wall up to 3 times
+            for (let attempt = 0; attempt < this.wallSpawnAttempts; attempt++) {
+                const wallX = Math.floor(Math.random() * this.gridCols);
+                const wallY = Math.floor(Math.random() * this.gridRows);
+                
+                // Check if position is at least 6 tiles away from snake head
+                const head = this.snakeBody[0];
+                const distance = Math.abs(wallX - head.x) + Math.abs(wallY - head.y); // Manhattan distance
+                
+                if (distance >= this.wallMinDistance) {
+                    // Check if position doesn't overlap with snake body
+                    const overlapsSnake = this.snakeBody.some(segment => segment.x === wallX && segment.y === wallY);
+                    
+                    // Check if position doesn't overlap with existing walls
+                    const overlapsWall = this.walls.some(wall => wall.x === wallX && wall.y === wallY);
+                    
+                    // Check if position doesn't overlap with apple
+                    const overlapsApple = this.apples.some(apple => apple.x === wallX && apple.y === wallY);
+                    
+                    if (!overlapsSnake && !overlapsWall && !overlapsApple) {
+                        // Create wall
+                        this.walls.push({
+                            x: wallX,
+                            y: wallY,
+                            movesRemaining: this.wallLifespan
+                        });
+                        wallSpawned = true;
+                        break;
+                    }
+                }
+            }
+            
+            // If we couldn't spawn this wall after 3 attempts, skip it
+            if (!wallSpawned) {
+                console.log(`Failed to spawn wall ${i + 1} after ${this.wallSpawnAttempts} attempts`);
+            }
+        }
+    }
+    
     isSnakeBodyAt(gridX, gridY) {
         return this.snakeBody.some(segment => segment.x === gridX && segment.y === gridY);
     }
@@ -2391,6 +2448,12 @@ class Game {
             this.gameOver();
             return;
         }
+        
+        // Check wall collision
+        if (this.walls.some(wall => wall.x === newHeadX && wall.y === newHeadY)) {
+            this.gameOver();
+            return;
+        }
 
         // Add new head
         this.snakeBody.unshift({ x: newHeadX, y: newHeadY });
@@ -2402,6 +2465,9 @@ class Game {
                 this.score += 100;
                 this.snakeLength++; // Increase snake length
                 this.spawnLevel20Apple(false);
+                
+                // Level 20: Spawn walls when apple is eaten
+                this.spawnLevel20Walls();
             } else {
                 // Remove tail if no apple eaten
                 this.snakeBody.pop();
@@ -2415,6 +2481,9 @@ class Game {
         if (this.snakeLength >= 28) { // 3 initial + 25 apples = 28
             this.completeLevel();
         }
+        
+        // Level 20: Update wall lifespans
+        this.updateLevel20Walls();
 
         this.lastMoveTime = currentTime;
     }
@@ -2686,6 +2755,18 @@ class Game {
         
         if (completed) {
             this.completedLevels = new Set(JSON.parse(completed));
+        }
+    }
+    
+    updateLevel20Walls() {
+        // Decrease lifespan for all walls
+        for (let i = this.walls.length - 1; i >= 0; i--) {
+            this.walls[i].movesRemaining--;
+            
+            // Remove walls that have expired
+            if (this.walls[i].movesRemaining <= 0) {
+                this.walls.splice(i, 1);
+            }
         }
     }
 }

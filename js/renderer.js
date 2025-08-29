@@ -295,6 +295,7 @@ export class Renderer {
             this.drawLevel20Grid();
             this.drawLevel20Snake(gameState.snakeBody, gameState.gridCols, gameState.gridRows, gameState.tileWidth, gameState.tileHeight, gameState.gameInstance);
             this.drawLevel20Apples(gameState.apples, gameState.tileWidth, gameState.tileHeight);
+            this.drawLevel20Walls(gameState.walls, gameState.tileWidth, gameState.tileHeight);
             return;
         }
         
@@ -493,5 +494,51 @@ export class Renderer {
         this.ctx.beginPath();
         this.ctx.arc(centerX - animatedRadius * 0.3, centerY - animatedRadius * 0.3, animatedRadius * 0.4, 0, Math.PI * 2);
         this.ctx.fill();
+    }
+    
+    drawLevel20Walls(walls, tileWidth, tileHeight) {
+        if (!walls || walls.length === 0) return;
+        
+        for (const wall of walls) {
+            const x = wall.x * tileWidth;
+            const y = wall.y * tileHeight;
+            
+            // Animation for walls about to expire (5 or fewer moves remaining)
+            let alpha = 1.0;
+            let scale = 1.0;
+            
+            if (wall.movesRemaining <= 5) {
+                // Create pulsing animation
+                const animationSpeed = 0.01; // Speed of pulse
+                const pulseIntensity = 0.3; // How much the opacity varies
+                const scaleIntensity = 0.1; // How much the size varies
+                
+                // Use current time for animation
+                const currentTime = Date.now();
+                const pulse = Math.sin(currentTime * animationSpeed) * 0.5 + 0.5; // 0 to 1
+                
+                alpha = 0.7 + (pulse * pulseIntensity); // Fade between 0.7 and 1.0
+                scale = 1.0 + (pulse * scaleIntensity); // Scale between 1.0 and 1.1
+            }
+            
+            // Apply scaling transformation
+            this.ctx.save();
+            const centerX = x + tileWidth / 2;
+            const centerY = y + tileHeight / 2;
+            this.ctx.translate(centerX, centerY);
+            this.ctx.scale(scale, scale);
+            this.ctx.translate(-centerX, -centerY);
+            
+            // Draw orange square wall with animation
+            this.ctx.fillStyle = `rgba(255, 140, 0, ${alpha})`; // Orange color with alpha
+            this.ctx.fillRect(x, y, tileWidth, tileHeight);
+            
+            // Add a subtle border with animation
+            this.ctx.strokeStyle = `rgba(255, 107, 0, ${alpha})`; // Darker orange border with alpha
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(x, y, tileWidth, tileHeight);
+            
+            this.ctx.restore();
+        }
     }
 }

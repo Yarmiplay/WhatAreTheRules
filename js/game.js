@@ -484,7 +484,7 @@ class Game {
     }
     
     setupLevel18() {
-        // Create 3 regular enemies for Level 18 (same as Level 17 but with power-ups for player only)
+        // Create 8 regular enemies for Level 18 (same as Level 17 but with power-ups for player only)
         this.enemies = [
             {
                 x: this.canvas.width / 4,
@@ -503,6 +503,41 @@ class Game {
             {
                 x: this.canvas.width / 4,
                 y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 2,
+                y: this.canvas.height / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 2,
+                y: this.canvas.height * 3 / 4,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width / 4,
+                y: this.canvas.height / 2,
+                radius: GAME_CONFIG.ENEMY_RADIUS,
+                speed: getRandomSpeed(),
+                wanderAngle: Math.random() * Math.PI * 2
+            },
+            {
+                x: this.canvas.width * 3 / 4,
+                y: this.canvas.height / 2,
                 radius: GAME_CONFIG.ENEMY_RADIUS,
                 speed: getRandomSpeed(),
                 wanderAngle: Math.random() * Math.PI * 2

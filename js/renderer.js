@@ -266,8 +266,8 @@ export class Renderer {
             // Draw player normally for other levels
             this.ctx.fillStyle = player.isInSafeZone ? '#0f0' : '#ff0';
             
-            // Level 11: Show invincibility effect
-            if (currentLevel === 11 && isInvincible) {
+            // Show invincibility effect for levels with power-ups
+            if ((currentLevel === 11 || currentLevel === 13 || currentLevel === 15 || currentLevel === 16 || currentLevel === 18 || currentLevel === 19) && isInvincible) {
                 // Pulsing effect for invincibility
                 const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
                 this.ctx.globalAlpha = pulse;
